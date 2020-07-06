@@ -1,0 +1,36 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+GET     /api                        controllers.ApiDocController.api
+
+
+#Functions for Account API
+POST     /account/balance                     controllers.AccountApiController.accountBalance()
+
+#Functions for Block API
+POST     /block                     controllers.BlockApiController.block()
+POST     /block/transaction                     controllers.BlockApiController.blockTransaction()
+
+#Functions for Construction API
+POST     /construction/combine                     controllers.ConstructionApiController.constructionCombine()
+POST     /construction/derive                     controllers.ConstructionApiController.constructionDerive()
+POST     /construction/hash                     controllers.ConstructionApiController.constructionHash()
+POST     /construction/metadata                     controllers.ConstructionApiController.constructionMetadata()
+POST     /construction/parse                     controllers.ConstructionApiController.constructionParse()
+POST     /construction/payloads                     controllers.ConstructionApiController.constructionPayloads()
+POST     /construction/preprocess                     controllers.ConstructionApiController.constructionPreprocess()
+POST     /construction/submit                     controllers.ConstructionApiController.constructionSubmit()
+
+#Functions for Mempool API
+POST     /mempool                     controllers.MempoolApiController.mempool()
+POST     /mempool/transaction                     controllers.MempoolApiController.mempoolTransaction()
+
+#Functions for Network API
+POST     /network/list                     controllers.NetworkApiController.networkList()
+POST     /network/options                     controllers.NetworkApiController.networkOptions()
+POST     /network/status                     controllers.NetworkApiController.networkStatus()
+
+# Map static resources from the /public folder to the /assets URL path
+GET /assets/*file           controllers.Assets.at(file)
+GET /versionedAssets/*file  controllers.Assets.versioned(file)
