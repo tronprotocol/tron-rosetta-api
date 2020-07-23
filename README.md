@@ -1,2 +1,2 @@
 # tron-rosetta-api
-A java-tron sdk for rosetta.
+A rosetta api for java-tron.
