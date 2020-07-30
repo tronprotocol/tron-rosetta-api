@@ -6,6 +6,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.validation.Valid;
 
 import com.alibaba.fastjson.JSON;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import io.swagger.annotations.ApiOperation;
@@ -22,13 +25,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.tron.common.utils.ByteArray;
-import org.tron.common.utils.Sha256Hash;
 import org.tron.core.ChainBaseManager;
 import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.core.exception.BadItemException;
 import org.tron.core.exception.ItemNotFoundException;
-import org.tron.core.Wallet;
 import org.tron.model.BlockIdentifier;
 import org.tron.model.BlockRequest;
 import org.tron.model.BlockResponse;
@@ -40,9 +41,6 @@ import org.tron.model.OperationIdentifier;
 @Controller
 @RequestMapping("${openapi.rosetta.base-path:}")
 public class BlockApiController implements BlockApi {
-  @Autowired
-  private Wallet wallet;
-
   @Autowired
   private ChainBaseManager chainBaseManager;
 
@@ -83,6 +81,8 @@ public class BlockApiController implements BlockApi {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           BlockResponse blockResponse = new BlockResponse();
           String returnString = "";
+          ObjectMapper mapper = new ObjectMapper();
+          mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
           Error error = new Error();
 
           try {
@@ -129,15 +129,15 @@ public class BlockApiController implements BlockApi {
                   .transactionIdentifier(new org.tron.model.TransactionIdentifier()
                       .hash(tronTx.getTransactionId().toString()))
                   .addOperationsItem(new org.tron.model.Operation()
-                      .operationIdentifier(new OperationIdentifier().index((long) 1))
+                      .operationIdentifier(new OperationIdentifier().index((long) 0))
                       .type(tronTx.getInstance().getRawData().getContract(0).getType().toString())
                       .status(status)));
             }
             rstBlock.setTransactions(rstTxs);
 
             blockResponse.setBlock(rstBlock);
-            returnString = JSON.toJSONString(blockResponse);
-          } catch (java.lang.Error | ItemNotFoundException | BadItemException e) {
+            returnString = mapper.writeValueAsString(blockResponse);
+          } catch (java.lang.Error | ItemNotFoundException | BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(500);
             error.setCode(100);
@@ -179,6 +179,8 @@ public class BlockApiController implements BlockApi {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           BlockTransactionResponse blockTransactionResponse = new BlockTransactionResponse();
           String returnString = "";
+          ObjectMapper mapper = new ObjectMapper();
+          mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
           Error error = new Error();
 
           try {
@@ -199,15 +201,15 @@ public class BlockApiController implements BlockApi {
                     .transactionIdentifier(new org.tron.model.TransactionIdentifier()
                         .hash(tronTx.getTransactionId().toString()))
                     .addOperationsItem(new org.tron.model.Operation()
-                        .operationIdentifier(new OperationIdentifier().index((long) 1))
+                        .operationIdentifier(new OperationIdentifier().index((long) 0))
                         .type(tronTx.getInstance().getRawData().getContract(0).getType().toString())
                         .status(status)));
                 break;
               }
             }
 
-            returnString = JSON.toJSONString(blockTransactionResponse);
-          } catch (java.lang.Error | ItemNotFoundException | BadItemException e) {
+            returnString = mapper.writeValueAsString(blockTransactionResponse);
+          } catch (java.lang.Error | ItemNotFoundException | BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(500);
             error.setCode(100);

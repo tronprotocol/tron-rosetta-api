@@ -2,6 +2,7 @@ package org.tron.api;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.primitives.Ints;
@@ -111,6 +112,8 @@ public class ConstructionApiController implements ConstructionApi {
       for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           String returnString = "";
+          ObjectMapper mapper = new ObjectMapper();
+          mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
           Error error = new Error();
 
           try {
@@ -138,12 +141,12 @@ public class ConstructionApiController implements ConstructionApi {
             }
 
             constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
-                .operationIdentifier(new OperationIdentifier().index((long) 1))
+                .operationIdentifier(new OperationIdentifier().index((long) 0))
                 .type(transaction.getRawData().getContract(0).getType().toString())
                 .status(status));
 
-            returnString = JSON.toJSONString(constructionParseResponse);
-          } catch (java.lang.Error | InvalidProtocolBufferException e) {
+            returnString = mapper.writeValueAsString(constructionParseResponse);
+          } catch (java.lang.Error | InvalidProtocolBufferException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(500);
             error = Constant.INVALID_TRANSACTION_FORMAT;
