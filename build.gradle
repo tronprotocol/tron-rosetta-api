@@ -148,3 +148,13 @@ sourceSets {
 
 compileJava.dependsOn tasks.openApiGenerate
 //build.dependsOn openApiGenerate
+
+build.doLast {
+    copy {
+
+        from file("${rootDir}/build/libs/")
+        into("${rootDir}/build/lib/")
+        include '**/*.jar'
+        include '*.jar'
+    }
+}
