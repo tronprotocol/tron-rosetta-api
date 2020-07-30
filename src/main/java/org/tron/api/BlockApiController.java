@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.validation.Valid;
 
 import com.alibaba.fastjson.JSON;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
@@ -81,6 +82,7 @@ public class BlockApiController implements BlockApi {
           BlockResponse blockResponse = new BlockResponse();
           String returnString = "";
           ObjectMapper mapper = new ObjectMapper();
+          mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
           Error error = new Error();
 
           try {
@@ -178,6 +180,7 @@ public class BlockApiController implements BlockApi {
           BlockTransactionResponse blockTransactionResponse = new BlockTransactionResponse();
           String returnString = "";
           ObjectMapper mapper = new ObjectMapper();
+          mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
           Error error = new Error();
 
           try {
