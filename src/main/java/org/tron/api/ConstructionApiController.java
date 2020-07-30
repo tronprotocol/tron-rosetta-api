@@ -2,8 +2,9 @@ package org.tron.api;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.primitives.Ints;
-import com.alibaba.fastjson.JSON;
 import com.google.protobuf.Any;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -31,20 +32,11 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.tron.model.*;
 import org.tron.model.Error;
 import org.tron.protos.Protocol;
-import org.tron.protos.contract.BalanceContract.TransferContract;
-import org.tron.protos.contract.AssetIssueContractOuterClass;
 import org.tron.protos.contract.BalanceContract;
 import org.tron.common.crypto.Hash;
-import org.tron.common.parameter.CommonParameter;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.StringUtil;
-import org.tron.common.utils.ByteUtil;
 import org.tron.common.utils.Commons;
-import org.tron.common.utils.StringUtil;
-import org.tron.common.utils.WalletUtil;
-import org.tron.common.utils.Sha256Hash;
-import org.tron.common.utils.Commons;
-import org.tron.common.utils.WalletUtil;
 import org.tron.config.Constant;
 import org.tron.core.Wallet;
 import org.tron.core.capsule.BlockCapsule;
@@ -67,10 +59,8 @@ import org.tron.model.ConstructionPreprocessResponse;
 import org.tron.model.ConstructionSubmitRequest;
 import org.tron.model.ConstructionSubmitResponse;
 import org.tron.model.CurveType;
-import org.tron.model.Error;
 import org.tron.model.PublicKey;
 import org.tron.model.Signature;
-import org.tron.protos.Protocol;
 
 @Controller
 @RequestMapping("${openapi.rosetta.base-path:}")
@@ -83,6 +73,8 @@ public class ConstructionApiController implements ConstructionApi {
 
   @Autowired
   private Wallet wallet;
+
+  private ObjectMapper objectMapper = new ObjectMapper();
 
 
   @org.springframework.beans.factory.annotation.Autowired
@@ -260,7 +252,7 @@ public class ConstructionApiController implements ConstructionApi {
     getRequest().ifPresent(request -> {
       for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
-          String returnString;
+          String returnString = "";
           //BalanceContract.TransferContract transferContract = BalanceContract.TransferContract.newBuilder().setAmount(10)
           //        .setOwnerAddress(ByteString.copyFrom(ByteArray.fromHexString("121212a9cf")))
           //        .setToAddress(ByteString.copyFrom(ByteArray.fromHexString("232323a9cf"))).build();
@@ -286,12 +278,16 @@ public class ConstructionApiController implements ConstructionApi {
             }
             ConstructionCombineResponse constructionCombineResponse = new ConstructionCombineResponse();
             constructionCombineResponse.setSignedTransaction(ByteArray.toHexString(transactionBuilder.build().toByteArray()));
-            returnString = JSON.toJSONString(constructionCombineResponse);
-          } catch (BadItemException e) {
+            returnString = objectMapper.writeValueAsString(constructionCombineResponse);
+          } catch (BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
             Error error = Constant.INVALID_TRANSACTION_FORMAT;
-            returnString = JSON.toJSONString(error);
+            try {
+              returnString = objectMapper.writeValueAsString(error);
+            } catch (JsonProcessingException ex) {
+              //ex.printStackTrace();
+            }
           }
 
           ApiUtil.setExampleResponse(request, "application/json", returnString);
@@ -379,12 +375,16 @@ public class ConstructionApiController implements ConstructionApi {
             String transactionHash = transaction.getTransactionId().toString();
             ConstructionHashResponse constructionHashResponse = new ConstructionHashResponse();
             constructionHashResponse.setTransactionHash(transactionHash);
-            returnString = JSON.toJSONString(constructionHashResponse);
-          } catch (BadItemException e) {
+            returnString = objectMapper.writeValueAsString(constructionHashResponse);
+          } catch (BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
             Error error = Constant.INVALID_TRANSACTION_FORMAT;
-            returnString = JSON.toJSONString(error);
+            try {
+              returnString = objectMapper.writeValueAsString(error);
+            } catch (JsonProcessingException ex) {
+              //ex.printStackTrace();
+            }
           }
 
           ApiUtil.setExampleResponse(request, "application/json", returnString);
@@ -435,19 +435,23 @@ public class ConstructionApiController implements ConstructionApi {
               String transactionHash = transactionSigned.getTransactionId().toString();
               ConstructionSubmitResponse constructionSubmitResponse = new ConstructionSubmitResponse();
               constructionSubmitResponse.getTransactionIdentifier().setHash(transactionHash);
-              returnString = JSON.toJSONString(constructionSubmitResponse);
+              returnString = objectMapper.writeValueAsString(constructionSubmitResponse);
             } else {
               statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
               error.setCode(result.getCodeValue());
               error.setMessage(result.getMessage().toStringUtf8());
               error.setRetriable(true);
-              returnString = JSON.toJSONString(error);
+              returnString = objectMapper.writeValueAsString(error);
             }
-          } catch (BadItemException e) {
+          } catch (BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
             error = Constant.INVALID_TRANSACTION_FORMAT;
-            returnString = JSON.toJSONString(error);
+            try {
+              returnString = objectMapper.writeValueAsString(error);
+            } catch (JsonProcessingException ex) {
+              //ex.printStackTrace();
+            }
           }
 
           ApiUtil.setExampleResponse(request, "application/json", returnString);
