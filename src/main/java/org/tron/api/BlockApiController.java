@@ -129,7 +129,7 @@ public class BlockApiController implements BlockApi {
                   .transactionIdentifier(new org.tron.model.TransactionIdentifier()
                       .hash(tronTx.getTransactionId().toString()))
                   .addOperationsItem(new org.tron.model.Operation()
-                      .operationIdentifier(new OperationIdentifier().index((long) 1))
+                      .operationIdentifier(new OperationIdentifier().index((long) 0))
                       .type(tronTx.getInstance().getRawData().getContract(0).getType().toString())
                       .status(status)));
             }
@@ -201,7 +201,7 @@ public class BlockApiController implements BlockApi {
                     .transactionIdentifier(new org.tron.model.TransactionIdentifier()
                         .hash(tronTx.getTransactionId().toString()))
                     .addOperationsItem(new org.tron.model.Operation()
-                        .operationIdentifier(new OperationIdentifier().index((long) 1))
+                        .operationIdentifier(new OperationIdentifier().index((long) 0))
                         .type(tronTx.getInstance().getRawData().getContract(0).getType().toString())
                         .status(status)));
                 break;

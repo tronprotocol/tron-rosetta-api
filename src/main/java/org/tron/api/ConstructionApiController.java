@@ -141,7 +141,7 @@ public class ConstructionApiController implements ConstructionApi {
             }
 
             constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
-                .operationIdentifier(new OperationIdentifier().index((long) 1))
+                .operationIdentifier(new OperationIdentifier().index((long) 0))
                 .type(transaction.getRawData().getContract(0).getType().toString())
                 .status(status));
 
