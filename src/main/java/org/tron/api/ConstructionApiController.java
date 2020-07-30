@@ -434,7 +434,9 @@ public class ConstructionApiController implements ConstructionApi {
             if (result.getResult()) {
               String transactionHash = transactionSigned.getTransactionId().toString();
               ConstructionSubmitResponse constructionSubmitResponse = new ConstructionSubmitResponse();
-              constructionSubmitResponse.getTransactionIdentifier().setHash(transactionHash);
+              TransactionIdentifier transactionIdentifier = new TransactionIdentifier();
+              transactionIdentifier.setHash(transactionHash);
+              constructionSubmitResponse.setTransactionIdentifier(transactionIdentifier);
               returnString = objectMapper.writeValueAsString(constructionSubmitResponse);
             } else {
               statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
