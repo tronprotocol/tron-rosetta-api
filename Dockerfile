@@ -19,6 +19,6 @@ RUN set -o errexit -o nounset \
 
 WORKDIR $BASE_DIR
 
-EXPOSE 8081
+EXPOSE 8080
 
 CMD ["sh", "-c", "java -jar $JARNAME -d chain"]
