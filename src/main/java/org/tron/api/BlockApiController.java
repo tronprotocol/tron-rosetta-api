@@ -121,6 +121,11 @@ public class BlockApiController implements BlockApi {
             List<org.tron.model.Transaction> rstTxs = Lists.newArrayList();
             System.out.println("tronTxs.size():" + tronTxs.size());
             for (TransactionCapsule tronTx : tronTxs) {
+              if (Protocol.Transaction.Contract.ContractType.TransferContract
+                  != tronTx.getInstance().getRawData().getContract(0).getType()) {
+                continue;
+              }
+
               String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
               if (null != tronTx.getContractRet()) {
                 status = tronTx.getContractRet().name();
@@ -192,6 +197,11 @@ public class BlockApiController implements BlockApi {
 
             List<TransactionCapsule> tronTxs = tronBlock.getTransactions();
             for (TransactionCapsule tronTx : tronTxs) {
+              if (Protocol.Transaction.Contract.ContractType.TransferContract
+                  != tronTx.getInstance().getRawData().getContract(0).getType()) {
+                continue;
+              }
+
               if (tronTx.getTransactionId().toString().equals(txID)) {
                 String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
                 if (null != tronTx.getContractRet()) {
