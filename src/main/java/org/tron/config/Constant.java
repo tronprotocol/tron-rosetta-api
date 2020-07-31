@@ -11,6 +11,7 @@ public class Constant {
   public static final String middlewareVersion = "1.0.2";
 
   // OperationStatus
+  public static OperationStatus OPERATION_DEFAULT = new OperationStatus().status("DEFAULT").successful(true);
   public static OperationStatus OPERATION_SUCCESS = new OperationStatus().status("SUCCESS").successful(true);
   public static OperationStatus OPERATION_REVERT = new OperationStatus().status("REVERTED").successful(false);
 
@@ -22,9 +23,10 @@ public class Constant {
 
 
   public static String[] supportOperationTypes = new String[]{
-          "TRANSFER"
+          "TransferContract"
   };
   public static List<OperationStatus> supportOperationStatuses = Arrays.asList(
+          OPERATION_DEFAULT,
           OPERATION_SUCCESS,
           OPERATION_REVERT
   );
