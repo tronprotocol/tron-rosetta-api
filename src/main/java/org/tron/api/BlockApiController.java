@@ -37,6 +37,7 @@ import org.tron.model.BlockTransactionRequest;
 import org.tron.model.BlockTransactionResponse;
 import org.tron.model.Error;
 import org.tron.model.OperationIdentifier;
+import org.tron.protos.Protocol;
 
 @Controller
 @RequestMapping("${openapi.rosetta.base-path:}")
@@ -120,9 +121,9 @@ public class BlockApiController implements BlockApi {
             List<org.tron.model.Transaction> rstTxs = Lists.newArrayList();
             System.out.println("tronTxs.size():" + tronTxs.size());
             for (TransactionCapsule tronTx : tronTxs) {
-              String status = "0";
+              String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
               if (null != tronTx.getContractRet()) {
-                status = tronTx.getContractRet().toString();
+                status = tronTx.getContractRet().name();
               }
 
               rstTxs.add(new org.tron.model.Transaction()
@@ -192,9 +193,9 @@ public class BlockApiController implements BlockApi {
             List<TransactionCapsule> tronTxs = tronBlock.getTransactions();
             for (TransactionCapsule tronTx : tronTxs) {
               if (tronTx.getTransactionId().toString().equals(txID)) {
-                String status = "0";
+                String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
                 if (null != tronTx.getContractRet()) {
-                  status = tronTx.getContractRet().toString();
+                  status = tronTx.getContractRet().name();
                 }
 
                 blockTransactionResponse.setTransaction(new org.tron.model.Transaction()

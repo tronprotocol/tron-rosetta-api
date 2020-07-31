@@ -135,9 +135,9 @@ public class ConstructionApiController implements ConstructionApi {
               }
             }
 
-            String status = "0";
+            String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
             if (0 != transaction.getRetCount()) {
-              status = transaction.getRet(0).getContractRet().toString();
+              status = transaction.getRet(0).getContractRet().name();
             }
 
             constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
