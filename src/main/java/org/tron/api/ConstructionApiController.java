@@ -124,7 +124,7 @@ public class ConstructionApiController implements ConstructionApi {
             String tronTx = constructionParseRequest.getTransaction();
 
             //1. get signers
-            Protocol.Transaction transaction = Protocol.Transaction.parseFrom(tronTx.getBytes());
+            Protocol.Transaction transaction = Protocol.Transaction.parseFrom(ByteArray.fromHexString(tronTx));
             if (signed) {
               java.util.List<org.tron.protos.Protocol.Transaction.Contract> contracts = transaction.getRawData().getContractList();
               for (org.tron.protos.Protocol.Transaction.Contract contract : contracts) {

@@ -146,7 +146,7 @@ public class BlockApiController implements BlockApi {
             rstBlock.setTransactions(rstTxs);
 
 //            getBlockBalanceTrace()
-            BalanceTraceStore balanceTraceStore = new BalanceTraceStore();
+//            BalanceTraceStore balanceTraceStore = new BalanceTraceStore();
 
             blockResponse.setBlock(rstBlock);
             returnString = mapper.writeValueAsString(blockResponse);
