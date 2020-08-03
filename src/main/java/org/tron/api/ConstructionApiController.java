@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.validation.Valid;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -514,12 +515,13 @@ public class ConstructionApiController implements ConstructionApi {
   public Pair<String, Protocol.Transaction> buildTransaction(ConstructionPayloadsRequest constructionPayloadsRequest) {
     List<Operation> operations = constructionPayloadsRequest.getOperations();
     Operation from, to;
-    if (!CollectionUtils.isEmpty(operations.get(0).getRelatedOperations())) {
-      from = operations.get(1);
-      to = operations.get(0);
-    } else {
+    if (StringUtils.isNotEmpty(operations.get(0).getAmount().getValue())
+        && operations.get(0).getAmount().getValue().startsWith("-")) {
       from = operations.get(0);
       to = operations.get(1);
+    } else {
+      from = operations.get(1);
+      to = operations.get(0);
 
     }
     BalanceContract.TransferContract.Builder builder = BalanceContract.TransferContract
@@ -532,7 +534,7 @@ public class ConstructionApiController implements ConstructionApi {
     ByteString bsTo = ByteString.copyFrom(Commons.decodeFromBase58Check(dest));
     builder.setToAddress(bsTo);
 
-    builder.setAmount(Long.parseLong(from.getAmount().getValue()));
+    builder.setAmount(Long.parseLong(to.getAmount().getValue()));
     BalanceContract.TransferContract contract = builder.build();
     TransactionCapsule transactionCapsule = new TransactionCapsule(contract,
         Protocol.Transaction.Contract.ContractType.TransferContract);

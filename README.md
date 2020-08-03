@@ -163,8 +163,8 @@ Based on Rosetta blockchain specifications, we have implemented the following in
     ]
 }
 ```
-#### Acount
-##### /acount/balance
+#### Account
+##### /account/balance
 
 ###### Sample Request:
 ```
