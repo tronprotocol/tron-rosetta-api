@@ -127,7 +127,7 @@ public class BlockApiController implements BlockApi {
               //1. set tx
               org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
                   .transactionIdentifier(new org.tron.model.TransactionIdentifier()
-                      .hash(tronTx.getTransactionIdentifier().toString()));
+                      .hash(ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray())));
               //2. set operations
               List<BalanceContract.TransactionBalanceTrace.Operation> operations = tronTx.getOperationList();
               for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
@@ -136,7 +136,7 @@ public class BlockApiController implements BlockApi {
                     .type(tronTx.getType())
                     .status(tronTx.getStatus())
                     .amount(new Amount().currency(Default.CURRENCY).value(op.getAmount()))
-                    .account(new AccountIdentifier().address(op.getAddress().toString())));
+                    .account(new AccountIdentifier().address(ByteArray.toHexString(op.getAddress().toByteArray()))));
               }
 
               rstTxs.add(rstTx);
