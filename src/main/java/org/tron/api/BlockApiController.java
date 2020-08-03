@@ -30,6 +30,7 @@ import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.core.exception.BadItemException;
 import org.tron.core.exception.ItemNotFoundException;
+import org.tron.core.store.BalanceTraceStore;
 import org.tron.model.BlockIdentifier;
 import org.tron.model.BlockRequest;
 import org.tron.model.BlockResponse;
@@ -94,6 +95,7 @@ public class BlockApiController implements BlockApi {
             BlockCapsule tronBlock = null;
             BlockCapsule tronBlockParent = null;
 
+            //1. get block
             if (null != blockIndex) {
               tronBlock = chainBaseManager.getBlockByNum(blockIndex);
             } else if (null != blockHash) {
@@ -107,6 +109,7 @@ public class BlockApiController implements BlockApi {
               tronBlockParent = tronBlock;
             }
 
+            //2. set block info
             rstBlock.setBlockIdentifier(
                 new BlockIdentifier()
                     .index(tronBlock.getNum())
@@ -117,6 +120,7 @@ public class BlockApiController implements BlockApi {
                     .hash(ByteArray.toHexString(tronBlockParent.getBlockId().getBytes())));
             rstBlock.setTimestamp(tronBlock.getTimeStamp());
 
+            //3. set tx info
             List<TransactionCapsule> tronTxs = tronBlock.getTransactions();
             List<org.tron.model.Transaction> rstTxs = Lists.newArrayList();
             System.out.println("tronTxs.size():" + tronTxs.size());
@@ -140,6 +144,9 @@ public class BlockApiController implements BlockApi {
                       .status(status)));
             }
             rstBlock.setTransactions(rstTxs);
+
+//            getBlockBalanceTrace()
+//            BalanceTraceStore balanceTraceStore = new BalanceTraceStore();
 
             blockResponse.setBlock(rstBlock);
             returnString = mapper.writeValueAsString(blockResponse);
