@@ -30,6 +30,7 @@ import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.core.exception.BadItemException;
 import org.tron.core.exception.ItemNotFoundException;
+import org.tron.core.store.BalanceTraceStore;
 import org.tron.model.BlockIdentifier;
 import org.tron.model.BlockRequest;
 import org.tron.model.BlockResponse;
@@ -143,6 +144,9 @@ public class BlockApiController implements BlockApi {
                       .status(status)));
             }
             rstBlock.setTransactions(rstTxs);
+
+//            getBlockBalanceTrace()
+            BalanceTraceStore balanceTraceStore = new BalanceTraceStore();
 
             blockResponse.setBlock(rstBlock);
             returnString = mapper.writeValueAsString(blockResponse);
