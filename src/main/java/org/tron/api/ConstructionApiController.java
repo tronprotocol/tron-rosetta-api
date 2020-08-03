@@ -136,7 +136,7 @@ public class ConstructionApiController implements ConstructionApi {
               }
             }
 
-            //2. get txs
+            //2. get ops
             String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
             if (0 != transaction.getRetCount()) {
               status = transaction.getRet(0).getContractRet().name();
