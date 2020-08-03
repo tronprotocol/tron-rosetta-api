@@ -123,6 +123,7 @@ public class ConstructionApiController implements ConstructionApi {
             Boolean signed = constructionParseRequest.getSigned();
             String tronTx = constructionParseRequest.getTransaction();
 
+            //1. get signers
             Protocol.Transaction transaction = Protocol.Transaction.parseFrom(tronTx.getBytes());
             if (signed) {
               java.util.List<org.tron.protos.Protocol.Transaction.Contract> contracts = transaction.getRawData().getContractList();
@@ -135,6 +136,7 @@ public class ConstructionApiController implements ConstructionApi {
               }
             }
 
+            //2. get txs
             String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
             if (0 != transaction.getRetCount()) {
               status = transaction.getRet(0).getContractRet().name();
