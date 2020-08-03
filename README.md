@@ -419,8 +419,8 @@ Based on Rosetta blockchain specifications, we have implemented the following in
 {
     "metadata": {
         "expiration": 1530571284000,
-        "reference_block_hash": "e266c445eb2a9036",
-        "reference_block_num": 29892,
+        "reference_block_hash": "00000000015093a6efd83b53a0a5ee32c54b4bb71434855ea20bb1c5c31b3821",
+        "reference_block_num": 22057894,
         "timestamp": 1596188062880
     }
 }
@@ -472,8 +472,8 @@ Based on Rosetta blockchain specifications, we have implemented the following in
     ],
     "metadata": {
         "expiration": 1530571284000,
-        "reference_block_hash": "e266c445eb2a9036",
-        "reference_block_num": 29892,
+        "reference_block_hash": "00000000015093a6efd83b53a0a5ee32c54b4bb71434855ea20bb1c5c31b3821",
+        "reference_block_num": 22057894,
         "timestamp": 1596188062880
     }
 }
