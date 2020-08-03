@@ -120,8 +120,14 @@ public class BlockApiController implements BlockApi {
 
             //3. set tx info
             List<org.tron.model.Transaction> rstTxs = Lists.newArrayList();
+            BlockBalanceTraceCapsule blockBalanceTraceCapsule =
+                chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId());
+            if (null == blockBalanceTraceCapsule) {
+              throw new ItemNotFoundException("transaction info not find");
+            }
             BalanceContract.BlockBalanceTrace blockBalanceTrace =
-                chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId()).getInstance();
+                blockBalanceTraceCapsule.getInstance();
+
             List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
             for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
               //1. set tx
@@ -197,11 +203,17 @@ public class BlockApiController implements BlockApi {
             BlockCapsule tronBlock = chainBaseManager.getBlockByNum(blockIndex);
             System.out.println("blockIndex:" + blockIndex);
 
+            BlockBalanceTraceCapsule blockBalanceTraceCapsule =
+                chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId());
+            if (null == blockBalanceTraceCapsule) {
+              throw new ItemNotFoundException("transaction info not find");
+            }
             BalanceContract.BlockBalanceTrace blockBalanceTrace =
-                chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId()).getInstance();
+                blockBalanceTraceCapsule.getInstance();
+
             List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
             for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
-              if(ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray()).equals(txID)){
+              if (ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray()).equals(txID)) {
                 //1. set tx
                 org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
                     .transactionIdentifier(new org.tron.model.TransactionIdentifier()
