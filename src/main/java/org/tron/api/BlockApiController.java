@@ -201,7 +201,7 @@ public class BlockApiController implements BlockApi {
                 chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId()).getInstance();
             List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
             for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
-              if(ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray()).equals(txID)){
+              if (ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray()).equals(txID)) {
                 //1. set tx
                 org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
                     .transactionIdentifier(new org.tron.model.TransactionIdentifier()
