@@ -197,27 +197,27 @@ public class BlockApiController implements BlockApi {
             BlockCapsule tronBlock = chainBaseManager.getBlockByNum(blockIndex);
             System.out.println("blockIndex:" + blockIndex);
 
-            List<TransactionCapsule> tronTxs = tronBlock.getTransactions();
-            for (TransactionCapsule tronTx : tronTxs) {
-              if (Protocol.Transaction.Contract.ContractType.TransferContract
-                  != tronTx.getInstance().getRawData().getContract(0).getType()) {
-                continue;
-              }
-
-              if (tronTx.getTransactionId().toString().equals(txID)) {
-                String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
-                if (null != tronTx.getContractRet()) {
-                  status = tronTx.getContractRet().name();
+            BalanceContract.BlockBalanceTrace blockBalanceTrace =
+                chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId()).getInstance();
+            List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
+            for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
+              if(ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray()).equals(txID)){
+                //1. set tx
+                org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
+                    .transactionIdentifier(new org.tron.model.TransactionIdentifier()
+                        .hash(ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray())));
+                //2. set operations
+                List<BalanceContract.TransactionBalanceTrace.Operation> operations = tronTx.getOperationList();
+                for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
+                  rstTx.addOperationsItem(new org.tron.model.Operation()
+                      .operationIdentifier(new OperationIdentifier().index(op.getOperationIdentifier()))
+                      .type(tronTx.getType())
+                      .status(tronTx.getStatus())
+                      .amount(new Amount().currency(Default.CURRENCY).value(op.getAmount()))
+                      .account(new AccountIdentifier().address(ByteArray.toHexString(op.getAddress().toByteArray()))));
                 }
 
-                blockTransactionResponse.setTransaction(new org.tron.model.Transaction()
-                    .transactionIdentifier(new org.tron.model.TransactionIdentifier()
-                        .hash(tronTx.getTransactionId().toString()))
-                    .addOperationsItem(new org.tron.model.Operation()
-                        .operationIdentifier(new OperationIdentifier().index((long) 0))
-                        .type(tronTx.getInstance().getRawData().getContract(0).getType().toString())
-                        .status(status)));
-                break;
+                blockTransactionResponse.setTransaction(rstTx);
               }
             }
 
