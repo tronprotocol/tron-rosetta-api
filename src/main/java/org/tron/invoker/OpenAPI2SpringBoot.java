@@ -44,7 +44,7 @@ public class OpenAPI2SpringBoot extends FullNode implements CommandLineRunner {
     public static void main(String[] args) {
         logger.info("Rosetta Api running.");
 
-        Args.setParam(args, Constant.TESTNET_CONF);
+        Args.setParam(args, "config-localtest.conf");
         CommonParameter parameter = Args.getInstance();
 
         load(parameter.getLogbackPath());
@@ -64,6 +64,29 @@ public class OpenAPI2SpringBoot extends FullNode implements CommandLineRunner {
 
         Application appT = ApplicationFactory.create(context);
         shutdown(appT);
+
+        // grpc api server
+        RpcApiService rpcApiService = context.getBean(RpcApiService.class);
+        appT.addService(rpcApiService);
+
+        // http api server
+        FullNodeHttpApiService httpApiService = context.getBean(FullNodeHttpApiService.class);
+        if (CommonParameter.getInstance().fullNodeHttpEnable) {
+            appT.addService(httpApiService);
+        }
+
+        // full node and solidity node fuse together
+        // provide solidity rpc and http server on the full node.
+        if (Args.getInstance().getStorage().getDbVersion() == 2) {
+            RpcApiServiceOnSolidity rpcApiServiceOnSolidity = context
+                    .getBean(RpcApiServiceOnSolidity.class);
+            appT.addService(rpcApiServiceOnSolidity);
+            HttpApiOnSolidityService httpApiOnSolidityService = context
+                    .getBean(HttpApiOnSolidityService.class);
+            if (CommonParameter.getInstance().solidityNodeHttpEnable) {
+                appT.addService(httpApiOnSolidityService);
+            }
+        }
 
         appT.initServices(parameter);
         appT.startServices();

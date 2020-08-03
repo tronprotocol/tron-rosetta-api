@@ -323,12 +323,9 @@ public class ConstructionApiController implements ConstructionApi {
       if (getRequest().isPresent()) {
         for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
           if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
-            String exampleString = "{ \"metadata\" : { \"account_sequence\" : 23, \"recent_block_hash\" : \"0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5\" } }";
-            ApiUtil.setExampleResponse(request, "application/json", exampleString);
             BlockCapsule.BlockId blockId = new BlockCapsule.BlockId(dynamicPropertiesStore.getLatestBlockHeaderHash());
-            byte[] referenceBlockNumBytes = ByteArray.subArray(ByteArray.fromLong(blockId.getNum()), 6, 8);
-            int referenceBlockNum = Ints.fromBytes((byte) 0, (byte) 0, referenceBlockNumBytes[0], referenceBlockNumBytes[1]);
-            String referenceBlockHash = ByteArray.toHexString(ByteArray.subArray(blockId.getBytes(), 8, 16));
+            long referenceBlockNum = blockId.getNum();
+            String referenceBlockHash = blockId.toString();
             long expiration = dynamicPropertiesStore.getLatestBlockHeaderTimestamp() + Args.getInstance()
                 .getTrxExpirationTimeInMilliseconds();
             long timestamp = System.currentTimeMillis();
@@ -338,9 +335,8 @@ public class ConstructionApiController implements ConstructionApi {
             metadatas.put("reference_block_hash", referenceBlockHash);
             metadatas.put("expiration", expiration);
             metadatas.put("timestamp", timestamp);
-            JSONObject jsonObject = new JSONObject(metadatas);
             ConstructionMetadataResponse response = new ConstructionMetadataResponse();
-            response.setMetadata(jsonObject.toString());
+            response.setMetadata(metadatas);
 
             return new ResponseEntity<>(response, HttpStatus.OK);
           }
@@ -539,7 +535,7 @@ public class ConstructionApiController implements ConstructionApi {
     TransactionCapsule transactionCapsule = new TransactionCapsule(contract,
         Protocol.Transaction.Contract.ContractType.TransferContract);
 
-    JSONObject metadata = JSON.parseObject((String) constructionPayloadsRequest.getMetadata());
+    JSONObject metadata = new JSONObject((Map<String, Object>) constructionPayloadsRequest.getMetadata());
 
     String referenceBlockHash = metadata.getString("reference_block_hash");
     int referenceBlockNum = metadata.getIntValue("reference_block_num");
