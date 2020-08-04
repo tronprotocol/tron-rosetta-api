@@ -18,6 +18,9 @@ import org.springframework.web.context.request.NativeWebRequest;
 import java.util.Optional;
 import org.tron.common.utils.Commons;
 import org.tron.core.capsule.AccountCapsule;
+import org.tron.core.db.Manager;
+import org.tron.core.db2.core.Chainbase;
+import org.tron.core.services.interfaceOnSolidity.WalletOnSolidity;
 import org.tron.core.store.AccountStore;
 import org.tron.core.store.DynamicPropertiesStore;
 import org.tron.model.AccountBalanceRequest;
@@ -37,6 +40,9 @@ public class AccountApiController implements AccountApi {
     private AccountStore accountStore;
     @Autowired
     private DynamicPropertiesStore dynamicPropertiesStore;
+
+    @Autowired
+    private Manager dbManager;
 
     @org.springframework.beans.factory.annotation.Autowired
     public AccountApiController(NativeWebRequest request) {
@@ -70,20 +76,27 @@ public class AccountApiController implements AccountApi {
         if (getRequest().isPresent()) {
             for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {
                 if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
-                    AccountIdentifier accountIdentifier = accountBalanceRequest.getAccountIdentifier();
-                    String address = accountIdentifier.getAddress();
-                    AccountCapsule accountCapsule = accountStore.get(Commons.decodeFromBase58Check(address));
-                    String balance = String.valueOf(accountCapsule.getBalance());
-                    Amount amount = new Amount();
-                    amount.value(balance)
-                        .currency(Default.CURRENCY);
-
-                    BlockIdentifier blockIdentifier = new BlockIdentifier();
-                    blockIdentifier.index(dynamicPropertiesStore.getLatestBlockHeaderNumber())
-                        .hash(dynamicPropertiesStore.getLatestBlockHeaderHash().toString());
                     AccountBalanceResponse response = new AccountBalanceResponse();
-                    response.blockIdentifier(blockIdentifier)
-                        .addBalancesItem(amount);
+                    try {
+                        dbManager.setCursor(Chainbase.Cursor.SOLIDITY);
+                        AccountIdentifier accountIdentifier =
+                            accountBalanceRequest.getAccountIdentifier();
+                        String address = accountIdentifier.getAddress();
+                        AccountCapsule accountCapsule =
+                            accountStore.get(Commons.decodeFromBase58Check(address));
+                        String balance = String.valueOf(accountCapsule.getBalance());
+                        Amount amount = new Amount();
+                        amount.value(balance)
+                            .currency(Default.CURRENCY);
+
+                        BlockIdentifier blockIdentifier = new BlockIdentifier();
+                        blockIdentifier.index(dynamicPropertiesStore.getLatestBlockHeaderNumber())
+                            .hash(dynamicPropertiesStore.getLatestBlockHeaderHash().toString());
+                        response.blockIdentifier(blockIdentifier)
+                            .addBalancesItem(amount);
+                    } finally {
+                        dbManager.setCursor(Chainbase.Cursor.HEAD);
+                    }
                     HttpHeaders headers = new HttpHeaders();
                     headers.setContentType(MediaType.APPLICATION_JSON_UTF8);
                     return new ResponseEntity<>(response, headers, HttpStatus.OK);
