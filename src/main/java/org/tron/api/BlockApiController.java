@@ -1,5 +1,6 @@
 package org.tron.api;
 
+import java.lang.Error;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -24,21 +25,21 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.tron.common.Default;
+import org.tron.common.utils.Base58;
 import org.tron.common.utils.ByteArray;
 import org.tron.core.ChainBaseManager;
+import org.tron.core.capsule.BlockBalanceTraceCapsule;
 import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.core.exception.BadItemException;
 import org.tron.core.exception.ItemNotFoundException;
 import org.tron.core.store.BalanceTraceStore;
-import org.tron.model.BlockIdentifier;
-import org.tron.model.BlockRequest;
-import org.tron.model.BlockResponse;
-import org.tron.model.BlockTransactionRequest;
-import org.tron.model.BlockTransactionResponse;
-import org.tron.model.Error;
-import org.tron.model.OperationIdentifier;
+import org.tron.model.*;
 import org.tron.protos.Protocol;
+import org.tron.protos.contract.BalanceContract;
+
+import static org.tron.common.utils.StringUtil.encode58Check;
 
 @Controller
 @RequestMapping("${openapi.rosetta.base-path:}")
@@ -85,7 +86,7 @@ public class BlockApiController implements BlockApi {
           String returnString = "";
           ObjectMapper mapper = new ObjectMapper();
           mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-          Error error = new Error();
+          org.tron.model.Error error = new org.tron.model.Error();
 
           try {
             Long blockIndex = blockRequest.getBlockIdentifier().getIndex();
@@ -121,32 +122,36 @@ public class BlockApiController implements BlockApi {
             rstBlock.setTimestamp(tronBlock.getTimeStamp());
 
             //3. set tx info
-            List<TransactionCapsule> tronTxs = tronBlock.getTransactions();
             List<org.tron.model.Transaction> rstTxs = Lists.newArrayList();
-            System.out.println("tronTxs.size():" + tronTxs.size());
-            for (TransactionCapsule tronTx : tronTxs) {
-              if (Protocol.Transaction.Contract.ContractType.TransferContract
-                  != tronTx.getInstance().getRawData().getContract(0).getType()) {
-                continue;
-              }
+            BlockBalanceTraceCapsule blockBalanceTraceCapsule =
+                chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId());
+            if (null == blockBalanceTraceCapsule) {
+              throw new ItemNotFoundException("transaction info not find");
+            }
+            BalanceContract.BlockBalanceTrace blockBalanceTrace =
+                blockBalanceTraceCapsule.getInstance();
 
-              String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
-              if (null != tronTx.getContractRet()) {
-                status = tronTx.getContractRet().name();
-              }
-
-              rstTxs.add(new org.tron.model.Transaction()
+            List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
+            for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
+              //1. set tx
+              org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
                   .transactionIdentifier(new org.tron.model.TransactionIdentifier()
-                      .hash(tronTx.getTransactionId().toString()))
-                  .addOperationsItem(new org.tron.model.Operation()
-                      .operationIdentifier(new OperationIdentifier().index((long) 0))
-                      .type(tronTx.getInstance().getRawData().getContract(0).getType().toString())
-                      .status(status)));
+                      .hash(ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray())));
+              //2. set operations
+              List<BalanceContract.TransactionBalanceTrace.Operation> operations = tronTx.getOperationList();
+              for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
+                rstTx.addOperationsItem(new org.tron.model.Operation()
+                    .operationIdentifier(new OperationIdentifier().index(op.getOperationIdentifier()))
+                    .type(tronTx.getType())
+                    .status(tronTx.getStatus())
+                    .amount(new Amount().currency(Default.CURRENCY).value(op.getAmount()))
+                    .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
+              }
+
+
+              rstTxs.add(rstTx);
             }
             rstBlock.setTransactions(rstTxs);
-
-//            getBlockBalanceTrace()
-//            BalanceTraceStore balanceTraceStore = new BalanceTraceStore();
 
             blockResponse.setBlock(rstBlock);
             returnString = mapper.writeValueAsString(blockResponse);
@@ -194,7 +199,7 @@ public class BlockApiController implements BlockApi {
           String returnString = "";
           ObjectMapper mapper = new ObjectMapper();
           mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-          Error error = new Error();
+          org.tron.model.Error error = new org.tron.model.Error();
 
           try {
             long blockIndex = blockTransactionRequest.getBlockIdentifier().getIndex();
@@ -202,27 +207,33 @@ public class BlockApiController implements BlockApi {
             BlockCapsule tronBlock = chainBaseManager.getBlockByNum(blockIndex);
             System.out.println("blockIndex:" + blockIndex);
 
-            List<TransactionCapsule> tronTxs = tronBlock.getTransactions();
-            for (TransactionCapsule tronTx : tronTxs) {
-              if (Protocol.Transaction.Contract.ContractType.TransferContract
-                  != tronTx.getInstance().getRawData().getContract(0).getType()) {
-                continue;
-              }
+            BlockBalanceTraceCapsule blockBalanceTraceCapsule =
+                chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId());
+            if (null == blockBalanceTraceCapsule) {
+              throw new ItemNotFoundException("transaction info not find");
+            }
+            BalanceContract.BlockBalanceTrace blockBalanceTrace =
+                blockBalanceTraceCapsule.getInstance();
 
-              if (tronTx.getTransactionId().toString().equals(txID)) {
-                String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
-                if (null != tronTx.getContractRet()) {
-                  status = tronTx.getContractRet().name();
+            List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
+            for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
+              if (ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray()).equals(txID)) {
+                //1. set tx
+                org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
+                    .transactionIdentifier(new org.tron.model.TransactionIdentifier()
+                        .hash(ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray())));
+                //2. set operations
+                List<BalanceContract.TransactionBalanceTrace.Operation> operations = tronTx.getOperationList();
+                for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
+                  rstTx.addOperationsItem(new org.tron.model.Operation()
+                      .operationIdentifier(new OperationIdentifier().index(op.getOperationIdentifier()))
+                      .type(tronTx.getType())
+                      .status(tronTx.getStatus())
+                      .amount(new Amount().currency(Default.CURRENCY).value(op.getAmount()))
+                      .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
                 }
 
-                blockTransactionResponse.setTransaction(new org.tron.model.Transaction()
-                    .transactionIdentifier(new org.tron.model.TransactionIdentifier()
-                        .hash(tronTx.getTransactionId().toString()))
-                    .addOperationsItem(new org.tron.model.Operation()
-                        .operationIdentifier(new OperationIdentifier().index((long) 0))
-                        .type(tronTx.getInstance().getRawData().getContract(0).getType().toString())
-                        .status(status)));
-                break;
+                blockTransactionResponse.setTransaction(rstTx);
               }
             }
 
