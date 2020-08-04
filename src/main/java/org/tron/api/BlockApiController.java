@@ -235,28 +235,22 @@ public class BlockApiController implements BlockApi {
               BalanceContract.BlockBalanceTrace blockBalanceTrace =
                   blockBalanceTraceCapsule.getInstance();
 
-              List<BalanceContract.TransactionBalanceTrace> tronTxs =
-                  blockBalanceTrace.getTransactionBalanceTraceList();
+              List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
               for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
                 //1. set tx
                 org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
                     .transactionIdentifier(new org.tron.model.TransactionIdentifier()
-                        .hash(ByteArray
-                            .toHexString(tronTx.getTransactionIdentifier().toByteArray())));
+                        .hash(ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray())));
                 //2. set operations
-                List<BalanceContract.TransactionBalanceTrace.Operation> operations =
-                    tronTx.getOperationList();
+                List<BalanceContract.TransactionBalanceTrace.Operation> operations = tronTx.getOperationList();
                 for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
                   rstTx.addOperationsItem(new org.tron.model.Operation()
-                      .operationIdentifier(
-                          new OperationIdentifier().index(op.getOperationIdentifier()))
+                      .operationIdentifier(new OperationIdentifier().index(op.getOperationIdentifier()))
                       .type(tronTx.getType())
                       .status(tronTx.getStatus())
                       .amount(new Amount().currency(Default.CURRENCY).value(op.getAmount()))
-                      .account(new AccountIdentifier()
-                          .address(encode58Check(op.getAddress().toByteArray()))));
+                      .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
                 }
-
 
                 rstTxs.add(rstTx);
               }

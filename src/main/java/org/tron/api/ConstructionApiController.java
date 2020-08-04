@@ -9,6 +9,7 @@ import com.google.common.primitives.Ints;
 import com.google.protobuf.Any;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.grpc.Metadata;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.tron.common.Default;
 import org.tron.model.*;
 import org.tron.model.Error;
 import org.tron.protos.Protocol;
@@ -63,6 +65,8 @@ import org.tron.model.ConstructionSubmitResponse;
 import org.tron.model.CurveType;
 import org.tron.model.PublicKey;
 import org.tron.model.Signature;
+
+import static org.tron.common.utils.StringUtil.encode58Check;
 
 @Controller
 @RequestMapping("${openapi.rosetta.base-path:}")
@@ -120,36 +124,61 @@ public class ConstructionApiController implements ConstructionApi {
           try {
             ConstructionParseResponse constructionParseResponse = new org.tron.model.ConstructionParseResponse();
 
-            NetworkIdentifier networkIdentifier = constructionParseRequest.getNetworkIdentifier();
             Boolean signed = constructionParseRequest.getSigned();
-            String tronTx = constructionParseRequest.getTransaction();
+            TransactionCapsule transaction = new TransactionCapsule(
+                ByteArray.fromHexString(constructionParseRequest.getTransaction()));
 
-            //1. get signers
-            Protocol.Transaction transaction = Protocol.Transaction.parseFrom(ByteArray.fromHexString(tronTx));
-            if (signed) {
-              java.util.List<org.tron.protos.Protocol.Transaction.Contract> contracts = transaction.getRawData().getContractList();
-              for (org.tron.protos.Protocol.Transaction.Contract contract : contracts) {
-                Any contractParameter = contract.getParameter();
-                if (org.tron.protos.Protocol.Transaction.Contract.ContractType.TransferContract == contract.getType()) {
-                  String from = contractParameter.unpack(BalanceContract.TransferContract.class).getOwnerAddress().toString();
-                  constructionParseResponse.addSignersItem(from);
-                }
+//            String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
+            String status = "";
+            if (0 != transaction.getInstance().getRetCount()) {
+              status = transaction.getInstance().getRet(0).getContractRet().name();
+            }
+            java.util.List<org.tron.protos.Protocol.Transaction.Contract> contracts =
+                transaction.getInstance().getRawData().getContractList();
+
+            long op_index = 0;
+            for (org.tron.protos.Protocol.Transaction.Contract contract : contracts) {
+              if (org.tron.protos.Protocol.Transaction.Contract.ContractType.TransferContract != contract.getType()) {
+                continue;
               }
+              BalanceContract.TransferContract balanceContract =
+                  contract.getParameter().unpack(BalanceContract.TransferContract.class);
+
+              //1. get signers
+              if (signed) {
+                String from = encode58Check(balanceContract.getOwnerAddress().toByteArray());
+                constructionParseResponse.addSignersItem(from);
+              }
+
+              //2. get ops
+              String own_amount = "-";
+              constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
+                  .operationIdentifier(new OperationIdentifier().index(op_index))
+                  .account(new AccountIdentifier().address(encode58Check(balanceContract.getOwnerAddress().toByteArray())))
+                  .amount(new Amount().value(own_amount+balanceContract.getAmount()).currency(Default.CURRENCY))
+                  .type(contract.getType().toString())
+                  .status(status));
+              constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
+                  .operationIdentifier(new OperationIdentifier().index(op_index+1))
+                  .account(new AccountIdentifier().address(encode58Check(balanceContract.getToAddress().toByteArray())))
+                  .amount(new Amount().value(Long.toString(balanceContract.getAmount())).currency(Default.CURRENCY))
+                  .type(contract.getType().toString())
+                  .status(status));
+
+              op_index += 2;
             }
 
-            //2. get ops
-            String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
-            if (0 != transaction.getRetCount()) {
-              status = transaction.getRet(0).getContractRet().name();
-            }
-
-            constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
-                .operationIdentifier(new OperationIdentifier().index((long) 0))
-                .type(transaction.getRawData().getContract(0).getType().toString())
-                .status(status));
+            //3. get metadata
+            Map<String, Object> metadatas = new HashMap<>();
+            metadatas.put("reference_block_num", transaction.getInstance().getRawData().getRefBlockNum());
+            metadatas.put("reference_block_hash", ByteArray.toHexString(transaction.getInstance().getRawData().getRefBlockHash().toByteArray()));
+            metadatas.put("expiration", transaction.getExpiration());
+            metadatas.put("timestamp", transaction.getTimestamp());
+            JSONObject metadata = new JSONObject(metadatas);
+            constructionParseResponse.setMetadata(metadata);
 
             returnString = mapper.writeValueAsString(constructionParseResponse);
-          } catch (java.lang.Error | InvalidProtocolBufferException | JsonProcessingException e) {
+          } catch (java.lang.Error | InvalidProtocolBufferException | JsonProcessingException | BadItemException e) {
             e.printStackTrace();
             statusCode.set(500);
             error = Constant.INVALID_TRANSACTION_FORMAT;
