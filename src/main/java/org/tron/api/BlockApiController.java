@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.tron.common.Default;
+import org.tron.common.utils.Base58;
 import org.tron.common.utils.ByteArray;
 import org.tron.core.ChainBaseManager;
 import org.tron.core.capsule.BlockBalanceTraceCapsule;
@@ -37,6 +38,8 @@ import org.tron.core.store.BalanceTraceStore;
 import org.tron.model.*;
 import org.tron.protos.Protocol;
 import org.tron.protos.contract.BalanceContract;
+
+import static org.tron.common.utils.StringUtil.encode58Check;
 
 @Controller
 @RequestMapping("${openapi.rosetta.base-path:}")
@@ -142,8 +145,9 @@ public class BlockApiController implements BlockApi {
                     .type(tronTx.getType())
                     .status(tronTx.getStatus())
                     .amount(new Amount().currency(Default.CURRENCY).value(op.getAmount()))
-                    .account(new AccountIdentifier().address(ByteArray.toHexString(op.getAddress().toByteArray()))));
+                    .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
               }
+
 
               rstTxs.add(rstTx);
             }
@@ -226,7 +230,7 @@ public class BlockApiController implements BlockApi {
                       .type(tronTx.getType())
                       .status(tronTx.getStatus())
                       .amount(new Amount().currency(Default.CURRENCY).value(op.getAmount()))
-                      .account(new AccountIdentifier().address(ByteArray.toHexString(op.getAddress().toByteArray()))));
+                      .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
                 }
 
                 blockTransactionResponse.setTransaction(rstTx);
