@@ -224,7 +224,7 @@ public class ConstructionApiController implements ConstructionApi {
     getRequest().ifPresent(request -> {
       for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
-          String exampleString = "{ \"options\" : \"{}\" }";
+          String exampleString = "{ \"options\" : {} }";
           ApiUtil.setExampleResponse(request, "application/json", exampleString);
           break;
         }
