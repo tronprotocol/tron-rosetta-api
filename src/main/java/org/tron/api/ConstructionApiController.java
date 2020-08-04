@@ -520,14 +520,14 @@ public class ConstructionApiController implements ConstructionApi {
       for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           validatePayloadsRequest(constructionPayloadsRequest);
-          Pair<String, Protocol.Transaction> pair = buildTransaction(constructionPayloadsRequest);
-          Protocol.Transaction transaction = pair.getRight();
+          Pair<String, TransactionCapsule> pair = buildTransaction(constructionPayloadsRequest);
+          TransactionCapsule transaction = pair.getRight();
           String owner = pair.getLeft();
           SigningPayload payloadItem = new SigningPayload();
           payloadItem.address(owner)
-              .hexBytes(ByteArray.toHexString(transaction.getRawData().toByteArray()));
+              .hexBytes(ByteArray.toHexString(transaction.getTransactionId().getBytes()));
           ConstructionPayloadsResponse response = new ConstructionPayloadsResponse();
-          response.unsignedTransaction(ByteArray.toHexString(transaction.toByteArray()))
+          response.unsignedTransaction(ByteArray.toHexString(transaction.getInstance().toByteArray()))
               .addPayloadsItem(payloadItem);
           return new ResponseEntity<>(response, HttpStatus.OK);
         }
@@ -541,7 +541,7 @@ public class ConstructionApiController implements ConstructionApi {
 
   }
 
-  public Pair<String, Protocol.Transaction> buildTransaction(ConstructionPayloadsRequest constructionPayloadsRequest) {
+  public Pair<String, TransactionCapsule> buildTransaction(ConstructionPayloadsRequest constructionPayloadsRequest) {
     List<Operation> operations = constructionPayloadsRequest.getOperations();
     Operation from, to;
     if (StringUtils.isNotEmpty(operations.get(0).getAmount().getValue())
@@ -579,7 +579,7 @@ public class ConstructionApiController implements ConstructionApi {
 
     long timestamp = metadata.getLongValue("timestamp");
     transactionCapsule.setTimestamp(timestamp);
-    return Pair.of(src, transactionCapsule.getInstance());
+    return Pair.of(src, transactionCapsule);
   }
 
 }
