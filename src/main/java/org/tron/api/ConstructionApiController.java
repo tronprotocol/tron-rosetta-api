@@ -523,8 +523,7 @@ public class ConstructionApiController implements ConstructionApi {
           String owner = pair.getLeft();
           SigningPayload payloadItem = new SigningPayload();
           payloadItem.address(owner)
-//              .hexBytes(ByteArray.toHexString(transaction.getTransactionId().getBytes()))
-              .hexBytes(ByteArray.toHexString(transaction.getInstance().getRawData().toByteArray()))
+              .hexBytes(ByteArray.toHexString(transaction.getTransactionId().getBytes()))
               .signatureType(SignatureType.ECDSA_RECOVERY);
           ConstructionPayloadsResponse response = new ConstructionPayloadsResponse();
           response.unsignedTransaction(ByteArray.toHexString(transaction.getInstance().toByteArray()))
