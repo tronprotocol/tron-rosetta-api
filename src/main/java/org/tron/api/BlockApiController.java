@@ -191,7 +191,7 @@ public class BlockApiController implements BlockApi {
             BlockCapsule tronBlockParent = null;
 
             if (blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum()) {
-              throw new ItemNotFoundException();
+              throw new ItemNotFoundException("request block index > solidified index");
             }
 
             if (blockIndex != null && blockIndex == 0) {
