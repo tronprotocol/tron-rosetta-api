@@ -1,0 +1,11 @@
+[
+  {
+    "account_identifier": {
+      "address":"THKrowiEfCe8evdbaBzDDvQjM5DGeB3s3F"
+    },
+    "currency": {
+      "symbol": "TRX",
+      "decimals": 6
+    }
+  }
+]
