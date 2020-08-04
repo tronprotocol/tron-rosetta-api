@@ -53,7 +53,6 @@ import org.tron.model.ConstructionCombineResponse;
 import org.tron.model.ConstructionDeriveRequest;
 import org.tron.model.ConstructionDeriveResponse;
 import org.tron.model.ConstructionHashRequest;
-import org.tron.model.ConstructionHashResponse;
 import org.tron.model.ConstructionMetadataRequest;
 import org.tron.model.ConstructionMetadataResponse;
 import org.tron.model.ConstructionPayloadsRequest;
@@ -61,7 +60,6 @@ import org.tron.model.ConstructionPayloadsResponse;
 import org.tron.model.ConstructionPreprocessRequest;
 import org.tron.model.ConstructionPreprocessResponse;
 import org.tron.model.ConstructionSubmitRequest;
-import org.tron.model.ConstructionSubmitResponse;
 import org.tron.model.CurveType;
 import org.tron.model.PublicKey;
 import org.tron.model.Signature;
@@ -386,15 +384,15 @@ public class ConstructionApiController implements ConstructionApi {
    * @return Expected response to a valid request (status code 200)
    * or unexpected error (status code 200)
    */
-  @ApiOperation(value = "Get the Hash of a Signed Transaction", nickname = "constructionHash", notes = "TransactionHash returns the network-specific transaction hash for a signed transaction.", response = ConstructionHashResponse.class, tags = {"Construction",})
+  @ApiOperation(value = "Get the Hash of a Signed Transaction", nickname = "constructionHash", notes = "TransactionHash returns the network-specific transaction hash for a signed transaction.", response = TransactionIdentifierResponse.class, tags = {"Construction",})
   @ApiResponses(value = {
-          @ApiResponse(code = 200, message = "Expected response to a valid request", response = ConstructionHashResponse.class),
+          @ApiResponse(code = 200, message = "Expected response to a valid request", response = TransactionIdentifierResponse.class),
           @ApiResponse(code = 200, message = "unexpected error", response = Error.class)})
   @RequestMapping(value = "/construction/hash",
           produces = {"application/json"},
           consumes = {"application/json"},
           method = RequestMethod.POST)
-  public ResponseEntity<ConstructionHashResponse> constructionHash(@ApiParam(value = "", required = true) @Valid @RequestBody ConstructionHashRequest constructionHashRequest) {
+  public ResponseEntity<TransactionIdentifierResponse> constructionHash(@ApiParam(value = "", required = true) @Valid @RequestBody ConstructionHashRequest constructionHashRequest) {
     AtomicInteger statusCode = new AtomicInteger(HttpStatus.OK.value());
     getRequest().ifPresent(request -> {
       for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
@@ -404,9 +402,9 @@ public class ConstructionApiController implements ConstructionApi {
             TransactionCapsule transaction = new TransactionCapsule(
                     ByteArray.fromHexString(constructionHashRequest.getSignedTransaction()));
             String transactionHash = transaction.getTransactionId().toString();
-            ConstructionHashResponse constructionHashResponse = new ConstructionHashResponse();
-            constructionHashResponse.setTransactionHash(transactionHash);
-            returnString = objectMapper.writeValueAsString(constructionHashResponse);
+            TransactionIdentifierResponse transactionIdentifierResponse = new TransactionIdentifierResponse();
+            transactionIdentifierResponse.setTransactionIdentifier(new TransactionIdentifier().hash(transactionHash));
+            returnString = objectMapper.writeValueAsString(transactionIdentifierResponse);
           } catch (BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
@@ -440,16 +438,16 @@ public class ConstructionApiController implements ConstructionApi {
    * @return Expected response to a valid request (status code 200)
    * or unexpected error (status code 200)
    */
-  @ApiOperation(value = "Submit a Signed Transaction", nickname = "constructionSubmit", notes = "Submit a pre-signed transaction to the node. This call should not block on the transaction being included in a block. Rather, it should return immediately with an indication of whether or not the transaction was included in the mempool. The transaction submission response should only return a 200 status if the submitted transaction could be included in the mempool. Otherwise, it should return an error.", response = ConstructionSubmitResponse.class, tags = {"Construction",})
+  @ApiOperation(value = "Submit a Signed Transaction", nickname = "constructionSubmit", notes = "Submit a pre-signed transaction to the node. This call should not block on the transaction being included in a block. Rather, it should return immediately with an indication of whether or not the transaction was included in the mempool. The transaction submission response should only return a 200 status if the submitted transaction could be included in the mempool. Otherwise, it should return an error.", response = TransactionIdentifierResponse.class, tags = {"Construction",})
   @ApiResponses(value = {
           @ApiResponse(code = 200, message = "Expected response to a valid request",
-                  response = ConstructionSubmitResponse.class),
+                  response = TransactionIdentifierResponse.class),
           @ApiResponse(code = 200, message = "unexpected error", response = Error.class)})
   @RequestMapping(value = "/construction/submit",
           produces = {"application/json"},
           consumes = {"application/json"},
           method = RequestMethod.POST)
-  public ResponseEntity<ConstructionSubmitResponse> constructionSubmit(
+  public ResponseEntity<TransactionIdentifierResponse> constructionSubmit(
           @ApiParam(value = "", required = true) @Valid @RequestBody ConstructionSubmitRequest constructionSubmitRequest) {
     AtomicInteger statusCode = new AtomicInteger(HttpStatus.OK.value());
 
@@ -464,11 +462,11 @@ public class ConstructionApiController implements ConstructionApi {
             GrpcAPI.Return result = wallet.broadcastTransaction(transactionSigned.getInstance());
             if (result.getResult()) {
               String transactionHash = transactionSigned.getTransactionId().toString();
-              ConstructionSubmitResponse constructionSubmitResponse = new ConstructionSubmitResponse();
+              TransactionIdentifierResponse transactionIdentifierResponse = new TransactionIdentifierResponse();
               TransactionIdentifier transactionIdentifier = new TransactionIdentifier();
               transactionIdentifier.setHash(transactionHash);
-              constructionSubmitResponse.setTransactionIdentifier(transactionIdentifier);
-              returnString = objectMapper.writeValueAsString(constructionSubmitResponse);
+              transactionIdentifierResponse.setTransactionIdentifier(transactionIdentifier);
+              returnString = objectMapper.writeValueAsString(transactionIdentifierResponse);
             } else {
               statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
               error.setCode(result.getCodeValue());
