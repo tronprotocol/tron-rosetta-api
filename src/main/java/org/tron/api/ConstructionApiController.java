@@ -9,6 +9,7 @@ import com.google.common.primitives.Ints;
 import com.google.protobuf.Any;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.grpc.Metadata;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
@@ -166,6 +167,15 @@ public class ConstructionApiController implements ConstructionApi {
 
               op_index += 2;
             }
+
+            //3. get metadata
+            Map<String, Object> metadatas = new HashMap<>();
+            metadatas.put("reference_block_num", transaction.getInstance().getRawData().getRefBlockNum());
+            metadatas.put("reference_block_hash", ByteArray.toHexString(transaction.getInstance().getRawData().getRefBlockHash().toByteArray()));
+            metadatas.put("expiration", transaction.getExpiration());
+            metadatas.put("timestamp", transaction.getTimestamp());
+            JSONObject metadata = new JSONObject(metadatas);
+            constructionParseResponse.setMetadata(metadata);
 
             returnString = mapper.writeValueAsString(constructionParseResponse);
           } catch (java.lang.Error | InvalidProtocolBufferException | JsonProcessingException | BadItemException e) {
