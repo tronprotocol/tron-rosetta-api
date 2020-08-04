@@ -23,7 +23,42 @@ public class Constant {
 
 
   public static String[] supportOperationTypes = new String[]{
-          "TransferContract"
+      "AccountCreateContract",
+      "TransferContract",
+      "TransferAssetContract",
+      "VoteAssetContract",
+      "VoteWitnessContract",
+      "WitnessCreateContract",
+      "AssetIssueContract",
+      "WitnessUpdateContract",
+      "ParticipateAssetIssueContract",
+      "AccountUpdateContract",
+      "FreezeBalanceContract",
+      "UnfreezeBalanceContract",
+      "WithdrawBalanceContract",
+      "UnfreezeAssetContract",
+      "UpdateAssetContract",
+      "ProposalCreateContract",
+      "ProposalApproveContract",
+      "ProposalDeleteContract",
+      "SetAccountIdContract",
+      "CustomContract",
+      "CreateSmartContract",
+      "TriggerSmartContract",
+      "GetContract",
+      "UpdateSettingContract",
+      "ExchangeCreateContract",
+      "ExchangeInjectContract",
+      "ExchangeWithdrawContract",
+      "ExchangeTransactionContract",
+      "UpdateEnergyLimitContract",
+      "AccountPermissionUpdateContract",
+      "ClearABIContract",
+      "UpdateBrokerageContract",
+      "ShieldedTransferContract",
+      "MarketSellAssetContract",
+      "MarketCancelOrderContract",
+      "UNRECOGNIZED"
   };
   public static List<OperationStatus> supportOperationStatuses = Arrays.asList(
           OPERATION_DEFAULT,

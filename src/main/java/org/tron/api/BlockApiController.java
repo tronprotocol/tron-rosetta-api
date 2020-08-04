@@ -231,7 +231,7 @@ public class BlockApiController implements BlockApi {
                   chainBaseManager.getBalanceTraceStore()
                       .getBlockBalanceTrace(tronBlock.getBlockId());
               if (null == blockBalanceTraceCapsule) {
-                throw new ItemNotFoundException("transaction info not find");
+                throw new ItemNotFoundException("block balance info not find");
               }
               BalanceContract.BlockBalanceTrace blockBalanceTrace =
                   blockBalanceTraceCapsule.getInstance();
@@ -323,7 +323,7 @@ public class BlockApiController implements BlockApi {
               blockBalanceTraceCapsule = chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId());
             }
             if (null == blockBalanceTraceCapsule) {
-              throw new ItemNotFoundException("transaction info not find");
+              throw new ItemNotFoundException("block balance info not find");
             }
             BalanceContract.BlockBalanceTrace blockBalanceTrace =
                 blockBalanceTraceCapsule.getInstance();
