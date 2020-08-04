@@ -68,7 +68,7 @@ public class BlockApiController implements BlockApi {
       TransactionBalanceTrace.Operation from = TransactionBalanceTrace.Operation.newBuilder()
           .setOperationIdentifier(0)
           .setAddress(transferContract.getOwnerAddress())
-          .setAmount(String.valueOf(-transferContract.getAmount()))
+          .setAmount(String.valueOf(0))
           .build();
       TransactionBalanceTrace.Operation to = TransactionBalanceTrace.Operation.newBuilder()
           .setOperationIdentifier(1)
@@ -81,8 +81,8 @@ public class BlockApiController implements BlockApi {
               .setTransactionIdentifier(transactionCapsule.getTransactionId().getByteString())
               .setType(Protocol.Transaction.Contract.ContractType.TransferContract.name())
               .setStatus(Protocol.Transaction.Result.contractResult.SUCCESS.name())
-              .addOperation(from)
-              .addOperation(to)
+//              .addOperation(from)
+//              .addOperation(to)
               .build();
       genesisBlockBalanceTraceCapsule.addTransactionBalanceTrace(transactionBalanceTrace);
     }

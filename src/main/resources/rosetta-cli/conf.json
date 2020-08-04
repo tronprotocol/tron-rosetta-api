@@ -15,7 +15,7 @@
    "symbol": "TRX",
    "decimals": 6
   },
-  "minimum_balance": "-9223372036854775809",
+  "minimum_balance": "0",
   "maximum_fee": "5",
   "curve_type": "secp256k1",
   "accounting_model": "account",
