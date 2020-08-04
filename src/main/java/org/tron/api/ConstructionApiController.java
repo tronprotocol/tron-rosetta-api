@@ -524,7 +524,7 @@ public class ConstructionApiController implements ConstructionApi {
           SigningPayload payloadItem = new SigningPayload();
           payloadItem.address(owner)
               .hexBytes(ByteArray.toHexString(transaction.getTransactionId().getBytes()))
-              .signatureType(SignatureType.ECDSA);
+              .signatureType(SignatureType.ECDSA_RECOVERY);
           ConstructionPayloadsResponse response = new ConstructionPayloadsResponse();
           response.unsignedTransaction(ByteArray.toHexString(transaction.getInstance().toByteArray()))
               .addPayloadsItem(payloadItem);
