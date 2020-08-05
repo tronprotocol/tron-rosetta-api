@@ -57,7 +57,7 @@
   "confirmation_depth": 20,
   "stale_depth": 30,
   "broadcast_limit": 3,
-  "ignore_broadcast_failures": false,
+  "ignore_broadcast_failures": true,
   "change_scenario": null,
   "clear_broadcasts": false,
   "broadcast_behind_tip": false,
