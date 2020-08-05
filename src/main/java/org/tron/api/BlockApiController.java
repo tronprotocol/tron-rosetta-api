@@ -19,6 +19,7 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -287,35 +288,35 @@ public class BlockApiController implements BlockApi {
       @ApiParam(value = "", required = true)
       @Valid
       @RequestBody BlockTransactionRequest blockTransactionRequest) {
+    int statusCode = 200;
     if(getRequest().isPresent()) {
       for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
-          BlockTransactionResponse blockTransactionResponse = new BlockTransactionResponse();
-          org.tron.model.Error error = new org.tron.model.Error();
-          int ret = handlerBlockTrasaction(blockTransactionRequest, blockTransactionResponse, error);
-          if(200 == ret){
-            return new ResponseEntity<>(blockTransactionResponse, HttpStatus.valueOf(ret));
-          }else{
-            return new ResponseEntity<>(error, HttpStatus.valueOf(ret));
-          }
+          Pair<Integer, String> pair = handlerBlockTransaction(blockTransactionRequest);
+          statusCode = pair.getLeft();
+          ApiUtil.setExampleResponse(request, "application/json", pair.getRight());
+          break;
         }
       }
     }
-    return new ResponseEntity<>(HttpStatus.valueOf(200));
+    return new ResponseEntity<>(HttpStatus.valueOf(statusCode));
   }
 
-  public int handlerBlockTrasaction(BlockTransactionRequest blockTransactionRequest,
-                                        BlockTransactionResponse blockTransactionResponse,
-                                        org.tron.model.Error error){
+  public Pair<Integer, String> handlerBlockTransaction(BlockTransactionRequest blockTransactionRequest){
+    String returnString;
+    BlockTransactionResponse blockTransactionResponse = new BlockTransactionResponse();
+    org.tron.model.Error error = new org.tron.model.Error();
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     try {
       long blockIndex = blockTransactionRequest.getBlockIdentifier().getIndex();
       String txID = blockTransactionRequest.getTransactionIdentifier().getHash();
-      BlockCapsule tronBlock = chainBaseManager.getBlockByNum(blockIndex);
       System.out.println("blockIndex:" + blockIndex);
 
       if (blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum()) {
         error = org.tron.config.Constant.BLOCK_ID_OVER_CURRENT_LAST;
-        return error.getCode();
+        returnString = JSON.toJSONString(error);
+        return Pair.of(error.getCode(), returnString);
       }
 
       //1. get blockBalanceTrace
@@ -323,6 +324,7 @@ public class BlockApiController implements BlockApi {
       if (blockIndex == 0) {
         blockBalanceTraceCapsule = genesisBlockBalanceTrace;
       } else {
+        BlockCapsule tronBlock = chainBaseManager.getBlockByNum(blockIndex);
         blockBalanceTraceCapsule = chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId());
       }
       if (null == blockBalanceTraceCapsule) {
@@ -338,14 +340,17 @@ public class BlockApiController implements BlockApi {
           blockTransactionResponse.setTransaction(toRosettaTx(tronTx));
         }
       }
-    } catch (java.lang.Error | ItemNotFoundException | BadItemException e) {
+
+      returnString = mapper.writeValueAsString(blockTransactionResponse);
+    } catch (java.lang.Error | ItemNotFoundException | BadItemException | JsonProcessingException e) {
       e.printStackTrace();
       error = org.tron.config.Constant.SERVER_INTERNAL_ERROR;
       error.setDetails(e.getMessage());
-      return error.getCode();
+      returnString = JSON.toJSONString(error);
+      return Pair.of(error.getCode(), returnString);
     }
 
-    return 200;
+    return Pair.of(200, returnString);
   }
 
   public org.tron.model.Transaction toRosettaTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace){
