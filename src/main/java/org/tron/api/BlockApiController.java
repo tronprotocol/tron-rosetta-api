@@ -33,6 +33,7 @@ import org.tron.common.utils.Base58;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.StringUtil;
 import org.tron.core.ChainBaseManager;
+import org.tron.core.Constant;
 import org.tron.core.capsule.BlockBalanceTraceCapsule;
 import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.capsule.ContractCapsule;
@@ -282,64 +283,69 @@ public class BlockApiController implements BlockApi {
       produces = {"application/json"},
       consumes = {"application/json"},
       method = RequestMethod.POST)
-  public ResponseEntity<BlockTransactionResponse> blockTransaction(@ApiParam(value = "", required = true) @Valid @RequestBody BlockTransactionRequest blockTransactionRequest) {
-    AtomicInteger statusCode = new AtomicInteger(200);
-
-    getRequest().ifPresent(request -> {
+  public ResponseEntity<BlockTransactionResponse> blockTransaction(
+      @ApiParam(value = "", required = true)
+      @Valid
+      @RequestBody BlockTransactionRequest blockTransactionRequest) {
+    if(getRequest().isPresent()) {
       for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           BlockTransactionResponse blockTransactionResponse = new BlockTransactionResponse();
-          String returnString = "";
-          ObjectMapper mapper = new ObjectMapper();
-          mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
           org.tron.model.Error error = new org.tron.model.Error();
-
-          try {
-            long blockIndex = blockTransactionRequest.getBlockIdentifier().getIndex();
-            String txID = blockTransactionRequest.getTransactionIdentifier().getHash();
-            BlockCapsule tronBlock = chainBaseManager.getBlockByNum(blockIndex);
-            System.out.println("blockIndex:" + blockIndex);
-
-            if (blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum()) {
-              throw new ItemNotFoundException();
-            }
-
-            //1. get blockBalanceTrace
-            BlockBalanceTraceCapsule blockBalanceTraceCapsule;
-            if (blockIndex == 0) {
-              blockBalanceTraceCapsule = genesisBlockBalanceTrace;
-            } else {
-              blockBalanceTraceCapsule = chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId());
-            }
-            if (null == blockBalanceTraceCapsule) {
-              throw new ItemNotFoundException("block balance info not find");
-            }
-            BalanceContract.BlockBalanceTrace blockBalanceTrace =
-                blockBalanceTraceCapsule.getInstance();
-
-            //2. get tx info when match txID
-            List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
-            for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
-              if (ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray()).equals(txID)) {
-                blockTransactionResponse.setTransaction(toRosettaTx(tronTx));
-              }
-            }
-
-            returnString = mapper.writeValueAsString(blockTransactionResponse);
-          } catch (java.lang.Error | ItemNotFoundException | BadItemException | JsonProcessingException e) {
-            e.printStackTrace();
-            statusCode.set(500);
-            error.setCode(100);
-            error.setMessage("error:" + e.getMessage());
-            error.setRetriable(false);
-            returnString = JSON.toJSONString(error);
+          int ret = handlerBlockTrasaction(blockTransactionRequest, blockTransactionResponse, error);
+          if(200 == ret){
+            return new ResponseEntity<>(blockTransactionResponse, HttpStatus.valueOf(ret));
+          }else{
+            return new ResponseEntity<>(error, HttpStatus.valueOf(ret));
           }
-          ApiUtil.setExampleResponse(request, "application/json", returnString);
-          break;
         }
       }
-    });
-    return new ResponseEntity<>(HttpStatus.valueOf(statusCode.get()));
+    }
+    return new ResponseEntity<>(HttpStatus.valueOf(200));
+  }
+
+  public int handlerBlockTrasaction(BlockTransactionRequest blockTransactionRequest,
+                                        BlockTransactionResponse blockTransactionResponse,
+                                        org.tron.model.Error error){
+    try {
+      long blockIndex = blockTransactionRequest.getBlockIdentifier().getIndex();
+      String txID = blockTransactionRequest.getTransactionIdentifier().getHash();
+      BlockCapsule tronBlock = chainBaseManager.getBlockByNum(blockIndex);
+      System.out.println("blockIndex:" + blockIndex);
+
+      if (blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum()) {
+        error = org.tron.config.Constant.BLOCK_ID_OVER_CURRENT_LAST;
+        return error.getCode();
+      }
+
+      //1. get blockBalanceTrace
+      BlockBalanceTraceCapsule blockBalanceTraceCapsule;
+      if (blockIndex == 0) {
+        blockBalanceTraceCapsule = genesisBlockBalanceTrace;
+      } else {
+        blockBalanceTraceCapsule = chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId());
+      }
+      if (null == blockBalanceTraceCapsule) {
+        throw new ItemNotFoundException("block balance info not find");
+      }
+      BalanceContract.BlockBalanceTrace blockBalanceTrace =
+          blockBalanceTraceCapsule.getInstance();
+
+      //2. get tx info when match txID
+      List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
+      for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
+        if (ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray()).equals(txID)) {
+          blockTransactionResponse.setTransaction(toRosettaTx(tronTx));
+        }
+      }
+    } catch (java.lang.Error | ItemNotFoundException | BadItemException e) {
+      e.printStackTrace();
+      error = org.tron.config.Constant.SERVER_INTERNAL_ERROR;
+      error.setDetails(e.getMessage());
+      return error.getCode();
+    }
+
+    return 200;
   }
 
   public org.tron.model.Transaction toRosettaTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace){

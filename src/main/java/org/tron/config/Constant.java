@@ -19,7 +19,11 @@ public class Constant {
   public static Error INVALID_ACCOUNT_FORMAT =
           new Error().code(12).message("Invalid account format").retriable(true).details(null);
   public static Error INVALID_TRANSACTION_FORMAT =
-          new Error().code(100).message("Invalid transaction format").retriable(false).details(null);
+      new Error().code(100).message("Invalid transaction format").retriable(false).details(null);
+  public static Error BLOCK_ID_OVER_CURRENT_LAST =
+      new Error().code(401).message("Block ID is bigger than current latest block").retriable(true).details(null);
+  public static Error SERVER_INTERNAL_ERROR =
+      new Error().code(500).message("server internal error").retriable(false).details(null);
 
 
   public static String[] supportOperationTypes = new String[]{
