@@ -150,7 +150,7 @@ public class ConstructionApiController implements ConstructionApi {
               }
 
               //2. get ops
-              String own_amount = "-";
+              String own_amount = balanceContract.getAmount() == 0 ? "" : "-";
               constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
                   .operationIdentifier(new OperationIdentifier().index(op_index))
                   .account(new AccountIdentifier().address(encode58Check(balanceContract.getOwnerAddress().toByteArray())))
