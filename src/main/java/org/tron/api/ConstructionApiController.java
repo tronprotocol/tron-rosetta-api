@@ -473,7 +473,7 @@ public class ConstructionApiController implements ConstructionApi {
               statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
               error.setCode(result.getCodeValue());
               error.setMessage(result.getMessage().toStringUtf8());
-              error.setRetriable(true);
+              error.setRetriable(false);
               returnString = objectMapper.writeValueAsString(error);
             }
           } catch (BadItemException | JsonProcessingException e) {

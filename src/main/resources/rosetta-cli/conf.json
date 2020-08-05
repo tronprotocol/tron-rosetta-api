@@ -43,7 +43,7 @@
       "index": 0
      }
     ],
-    "type": "transfer",
+    "type": "TransferContract",
     "status": "",
     "account": {
      "address": "{{ RECIPIENT }}"
