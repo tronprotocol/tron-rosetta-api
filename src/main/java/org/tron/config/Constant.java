@@ -2,6 +2,7 @@ package org.tron.config;
 
 import java.util.Arrays;
 import java.util.List;
+
 import org.tron.model.Error;
 import org.tron.model.OperationStatus;
 
@@ -17,7 +18,7 @@ public class Constant {
 
   // errors
   public static Error INVALID_ACCOUNT_FORMAT =
-          new Error().code(12).message("Invalid account format").retriable(true).details(null);
+      new Error().code(12).message("Invalid account format").retriable(true).details(null);
   public static Error INVALID_TRANSACTION_FORMAT =
       new Error().code(100).message("Invalid transaction format").retriable(false).details(null);
   public static Error BLOCK_ID_OVER_CURRENT_LAST =
@@ -65,12 +66,14 @@ public class Constant {
       "UNRECOGNIZED"
   };
   public static List<OperationStatus> supportOperationStatuses = Arrays.asList(
-          OPERATION_DEFAULT,
-          OPERATION_SUCCESS,
-          OPERATION_REVERT
+      OPERATION_DEFAULT,
+      OPERATION_SUCCESS,
+      OPERATION_REVERT
   );
   public static List<Error> supportErrors = Arrays.asList(
-          INVALID_ACCOUNT_FORMAT,
-          INVALID_TRANSACTION_FORMAT
+      INVALID_ACCOUNT_FORMAT,
+      INVALID_TRANSACTION_FORMAT,
+      BLOCK_ID_OVER_CURRENT_LAST,
+      SERVER_EXCEPTION_CATCH
   );
 }
