@@ -319,6 +319,7 @@ public class BlockApiController implements BlockApi {
               throw new ItemNotFoundException();
             }
 
+            //1. get blockBalanceTrace
             BlockBalanceTraceCapsule blockBalanceTraceCapsule;
             if (blockIndex == 0) {
               blockBalanceTraceCapsule = genesisBlockBalanceTrace;
@@ -331,6 +332,7 @@ public class BlockApiController implements BlockApi {
             BalanceContract.BlockBalanceTrace blockBalanceTrace =
                 blockBalanceTraceCapsule.getInstance();
 
+            //2. get tx info when match txID
             List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
             for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
               if (ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray()).equals(txID)) {
@@ -348,7 +350,7 @@ public class BlockApiController implements BlockApi {
                       .amount(new Amount().currency(Default.CURRENCY).value(op.getAmount()))
                       .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
                 }
-
+                //3. response
                 blockTransactionResponse.setTransaction(rstTx);
               }
             }
