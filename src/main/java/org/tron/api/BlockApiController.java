@@ -1,6 +1,7 @@
 package org.tron.api;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+
 import java.lang.Error;
 import java.util.List;
 import java.util.Optional;
@@ -198,7 +199,6 @@ public class BlockApiController implements BlockApi {
             if (blockIndex != null && blockIndex == 0) {
               blockResponse.setBlock(genesisBlock);
             } else {
-
               //1. get block
               if (null != blockIndex) {
                 tronBlock = chainBaseManager.getBlockByNum(blockIndex);
@@ -208,6 +208,7 @@ public class BlockApiController implements BlockApi {
               } else {
                 tronBlock = chainBaseManager.getBlockStore().getBlockByLatestNum(1).get(0);
               }
+
               if (null != tronBlock && tronBlock.getNum() > 0) {
                 tronBlockParent = chainBaseManager.getBlockById(tronBlock.getParentHash());
               } else {
@@ -257,8 +258,10 @@ public class BlockApiController implements BlockApi {
               }
               rstBlock.setTransactions(rstTxs);
 
+              //4. response
               blockResponse.setBlock(rstBlock);
             }
+
             returnString = mapper.writeValueAsString(blockResponse);
           } catch (java.lang.Error | ItemNotFoundException | BadItemException | JsonProcessingException e) {
             e.printStackTrace();
