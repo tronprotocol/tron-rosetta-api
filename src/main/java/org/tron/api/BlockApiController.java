@@ -316,7 +316,7 @@ public class BlockApiController implements BlockApi {
       if (blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum()) {
         error = org.tron.config.Constant.BLOCK_ID_OVER_CURRENT_LAST;
         returnString = JSON.toJSONString(error);
-        return Pair.of(error.getCode(), returnString);
+        return Pair.of(400, returnString);
       }
 
       //1. get blockBalanceTrace
@@ -344,10 +344,10 @@ public class BlockApiController implements BlockApi {
       returnString = mapper.writeValueAsString(blockTransactionResponse);
     } catch (java.lang.Error | ItemNotFoundException | BadItemException | JsonProcessingException e) {
       e.printStackTrace();
-      error = org.tron.config.Constant.SERVER_INTERNAL_ERROR;
+      error = org.tron.config.Constant.SERVER_EXCEPTION_CATCH;
       error.setDetails(e.getMessage());
       returnString = JSON.toJSONString(error);
-      return Pair.of(error.getCode(), returnString);
+      return Pair.of(500, returnString);
     }
 
     return Pair.of(200, returnString);
