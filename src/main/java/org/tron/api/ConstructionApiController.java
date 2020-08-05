@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.tron.common.Default;
+import org.tron.common.crypto.ECKey;
 import org.tron.model.*;
 import org.tron.model.Error;
 import org.tron.protos.Protocol;
@@ -219,7 +220,8 @@ public class ConstructionApiController implements ConstructionApi {
           PublicKey publicKey = constructionDeriveRequest.getPublicKey();
           if (CurveType.SECP256K1.equals(publicKey.getCurveType())) {
             String hexBytes = publicKey.getHexBytes();
-            byte[] address = Hash.computeAddress(ByteArray.fromHexString(hexBytes));
+            ECKey ecKey = new ECKey(ByteArray.fromHexString(hexBytes), false);
+            byte[] address = ecKey.getAddress();
             ConstructionDeriveResponse response = new ConstructionDeriveResponse();
             response.address(StringUtil.encode58Check(address));
             return new ResponseEntity<>(response, HttpStatus.OK);
