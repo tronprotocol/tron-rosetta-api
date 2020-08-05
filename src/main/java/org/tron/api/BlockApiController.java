@@ -239,22 +239,7 @@ public class BlockApiController implements BlockApi {
 
               List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
               for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
-                //1. set tx
-                org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
-                    .transactionIdentifier(new org.tron.model.TransactionIdentifier()
-                        .hash(ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray())));
-                //2. set operations
-                List<BalanceContract.TransactionBalanceTrace.Operation> operations = tronTx.getOperationList();
-                for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
-                  rstTx.addOperationsItem(new org.tron.model.Operation()
-                      .operationIdentifier(new OperationIdentifier().index(op.getOperationIdentifier()))
-                      .type(tronTx.getType())
-                      .status(tronTx.getStatus())
-                      .amount(new Amount().currency(Default.CURRENCY).value(op.getAmount()))
-                      .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
-                }
-
-                rstTxs.add(rstTx);
+                rstTxs.add(toRosettaTx(tronTx));
               }
               rstBlock.setTransactions(rstTxs);
 
@@ -336,22 +321,7 @@ public class BlockApiController implements BlockApi {
             List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
             for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
               if (ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray()).equals(txID)) {
-                //1. set tx
-                org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
-                    .transactionIdentifier(new org.tron.model.TransactionIdentifier()
-                        .hash(ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray())));
-                //2. set operations
-                List<BalanceContract.TransactionBalanceTrace.Operation> operations = tronTx.getOperationList();
-                for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
-                  rstTx.addOperationsItem(new org.tron.model.Operation()
-                      .operationIdentifier(new OperationIdentifier().index(op.getOperationIdentifier()))
-                      .type(tronTx.getType())
-                      .status(tronTx.getStatus())
-                      .amount(new Amount().currency(Default.CURRENCY).value(op.getAmount()))
-                      .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
-                }
-                //3. response
-                blockTransactionResponse.setTransaction(rstTx);
+                blockTransactionResponse.setTransaction(toRosettaTx(tronTx));
               }
             }
 
@@ -370,5 +340,24 @@ public class BlockApiController implements BlockApi {
       }
     });
     return new ResponseEntity<>(HttpStatus.valueOf(statusCode.get()));
+  }
+
+  public org.tron.model.Transaction toRosettaTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace){
+    //1. set tx
+    org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
+        .transactionIdentifier(new org.tron.model.TransactionIdentifier()
+            .hash(ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray())));
+    //2. set operations
+    List<BalanceContract.TransactionBalanceTrace.Operation> operations = transactionBalanceTrace.getOperationList();
+    for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
+      rstTx.addOperationsItem(new org.tron.model.Operation()
+          .operationIdentifier(new OperationIdentifier().index(op.getOperationIdentifier()))
+          .type(transactionBalanceTrace.getType())
+          .status(transactionBalanceTrace.getStatus())
+          .amount(new Amount().currency(Default.CURRENCY).value(op.getAmount()))
+          .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
+    }
+
+    return rstTx;
   }
 }
