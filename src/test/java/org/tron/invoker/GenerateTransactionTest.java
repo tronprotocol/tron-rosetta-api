@@ -1,9 +1,11 @@
 package org.tron.invoker;
 
+import com.beust.jcommander.internal.Lists;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.math.BigInteger;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.tron.api.GrpcAPI;
@@ -20,6 +22,26 @@ public class GenerateTransactionTest {
   private ManagedChannel channelFull = null;
   private WalletGrpc.WalletBlockingStub blockingStubFull = null;
 
+  private final static String pk1 = "22a6aca17f8ec257cc57e190902767d7fedf908bba920b4fbeaab8f158e0da17";
+  private final static String pk2 = "b6d8d3382c32d4d066c4f830a7e53c3da9ad8b9665dda4ca081b6cd4e807d09c";
+  private final static String pk3 = "03caf867c46aaf86d56aa446db80cb49305126b77bfaccfe57ab17bdb4993ccc";
+  private final static String pk4 = "763009595dd132aaf2d248999f2c6e7ba0acbbd9a9dfd88f7c2c158d97327645";
+  private final static String pk5 = "a21a3074d4d84685efaffcd7c04e3eccb541ec4c85f61c41a099cd598ad39825";
+  private final static String pk6 = "541a2d585fcea7e9b1803df4eb49af0eb09f1fa2ce06aa5b8ed60ac95655d66d";
+  private final static String pk7 = "7d5a7396d6430edb7f66aa5736ef388f2bea862c9259de8ad8c2cfe080f6f5a0";
+  private final static String pk8 = "7c4977817417495f4ca0c35ab3d5a25e247355d68f89f593f3fea2ab62c8644f";
+
+  private static byte[] add1 = getFinalAddress(pk1);
+  private static byte[] add2 = getFinalAddress(pk2);
+  private static byte[] add3 = getFinalAddress(pk3);
+  private static byte[] add4 = getFinalAddress(pk4);
+  private static byte[] add5 = getFinalAddress(pk5);
+  private static byte[] add6 = getFinalAddress(pk6);
+  private static byte[] add7 = getFinalAddress(pk7);
+  private static byte[] add8 = getFinalAddress(pk8);
+
+  private List<byte[]> addrList = Lists.newArrayList();
+
   @Before
   public void init(){
 //    String fullnode = String.format("%s:%d", "127.0.0.1",
@@ -30,6 +52,14 @@ public class GenerateTransactionTest {
             .usePlaintext(true)
             .build();
     blockingStubFull = WalletGrpc.newBlockingStub(channelFull);
+    addrList.add(add1);
+    addrList.add(add2);
+    addrList.add(add3);
+    addrList.add(add4);
+    addrList.add(add5);
+    addrList.add(add6);
+    addrList.add(add7);
+    addrList.add(add8);
   }
 
   @Test
@@ -37,14 +67,14 @@ public class GenerateTransactionTest {
     int during = 1*1000; // ms
     int runTime = 0;
     int sleepOnce = 100;
+    int count = 0;
     while (true) {
-      ECKey ecKey2 = new ECKey(Utils.getRandom());
-      byte[] address = ecKey2.getAddress();
-
+      int index = count % 8;
+//      ECKey ecKey2 = new ECKey(Utils.getRandom());
+//      byte[] address = ecKey2.getAddress();
       String sunPri = "cba92a516ea09f620a16ff7ee95ce0df1d56550a8babe9964981a7144c8a784a";
       byte[] sunAddress = getFinalAddress(sunPri);
-      sendcoin(address, 1L,
-              sunAddress, sunPri, blockingStubFull);
+      sendcoin(addrList.get(index), 1_000_000L, sunAddress, sunPri, blockingStubFull);
       try {
         Thread.sleep(sleepOnce);
       } catch (InterruptedException e) {

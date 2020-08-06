@@ -31,6 +31,14 @@ You can also customize a data directory
 $ docker run --name tron-rosetta -d -p 8080:8080 -v ${realpath data}:/data/chain tron-roseta-server:latest
 ```
 
+In case you wish to connect to the test net or setup a private net, set the `NET_TYPE` as such:
+```
+# test net
+$ docker run --name tron-rosetta -d --env NET_TYPE="testnet" -p 8080:8080 -v ${realpath data}:/data/chain tron-roseta-server:latest
+
+# private net
+$ docker run --name tron-rosetta -d --env NET_TYPE="private" -p 8080:8080 -v ${realpath data}:/data/chain tron-roseta-server:latest
+```
 
 
 ## API Reference
