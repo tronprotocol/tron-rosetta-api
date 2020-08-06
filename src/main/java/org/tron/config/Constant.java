@@ -14,7 +14,19 @@ public class Constant {
   // OperationStatus
   public static OperationStatus OPERATION_DEFAULT = new OperationStatus().status("DEFAULT").successful(true);
   public static OperationStatus OPERATION_SUCCESS = new OperationStatus().status("SUCCESS").successful(true);
-  public static OperationStatus OPERATION_REVERT = new OperationStatus().status("REVERTED").successful(false);
+  public static OperationStatus OPERATION_REVERT = new OperationStatus().status("REVERT").successful(false);
+  public static OperationStatus OPERATION_BAD_JUMP_DESTINATION = new OperationStatus().status("BAD_JUMP_DESTINATION").successful(false);
+  public static OperationStatus OPERATION_OUT_OF_MEMORY = new OperationStatus().status("OUT_OF_MEMORY").successful(false);
+  public static OperationStatus OPERATION_PRECOMPILED_CONTRACT = new OperationStatus().status("PRECOMPILED_CONTRACT").successful(false);
+  public static OperationStatus OPERATION_STACK_TOO_SMALL = new OperationStatus().status("STACK_TOO_SMALL").successful(false);
+  public static OperationStatus OPERATION_STACK_TOO_LARGE = new OperationStatus().status("STACK_TOO_LARGE").successful(false);
+  public static OperationStatus OPERATION_ILLEGAL_OPERATION = new OperationStatus().status("ILLEGAL_OPERATION").successful(false);
+  public static OperationStatus OPERATION_STACK_OVERFLOW = new OperationStatus().status("STACK_OVERFLOW").successful(false);
+  public static OperationStatus OPERATION_OUT_OF_ENERGY = new OperationStatus().status("OUT_OF_ENERGY").successful(false);
+  public static OperationStatus OPERATION_OUT_OF_TIME = new OperationStatus().status("OUT_OF_TIME").successful(false);
+  public static OperationStatus OPERATION_JVM_STACK_OVER_FLOW = new OperationStatus().status("JVM_STACK_OVER_FLOW").successful(false);
+  public static OperationStatus OPERATION_UNKNOWN = new OperationStatus().status("UNKNOWN").successful(false);
+  public static OperationStatus OPERATION_TRANSFER_FAILED = new OperationStatus().status("TRANSFER_FAILED").successful(false);
 
   // errors
   public static Error INVALID_ACCOUNT_FORMAT =
@@ -74,7 +86,19 @@ public class Constant {
   public static List<OperationStatus> supportOperationStatuses = Arrays.asList(
       OPERATION_DEFAULT,
       OPERATION_SUCCESS,
-      OPERATION_REVERT
+      OPERATION_REVERT,
+      OPERATION_BAD_JUMP_DESTINATION,
+      OPERATION_OUT_OF_MEMORY,
+      OPERATION_PRECOMPILED_CONTRACT,
+      OPERATION_STACK_TOO_SMALL,
+      OPERATION_STACK_TOO_LARGE,
+      OPERATION_ILLEGAL_OPERATION,
+      OPERATION_STACK_OVERFLOW,
+      OPERATION_OUT_OF_ENERGY,
+      OPERATION_OUT_OF_TIME,
+      OPERATION_JVM_STACK_OVER_FLOW,
+      OPERATION_UNKNOWN,
+      OPERATION_TRANSFER_FAILED
   );
   public static List<Error> supportErrors = Arrays.asList(
       INVALID_ACCOUNT_FORMAT,
