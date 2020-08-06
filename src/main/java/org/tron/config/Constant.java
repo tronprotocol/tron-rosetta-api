@@ -21,6 +21,8 @@ public class Constant {
       new Error().code(12).message("Invalid account format").retriable(true).details(null);
   public static Error INVALID_TRANSACTION_FORMAT =
       new Error().code(100).message("Invalid transaction format").retriable(false).details(null);
+  public static Error BROADCAST_TRANSACTION_FAILED =
+      new Error().code(101).message("Broadcast transaction failed").retriable(false).details(null);
   public static Error BLOCK_ID_OVER_CURRENT_LAST =
       new Error().code(201).message("Block ID is bigger than current latest block").retriable(true).details(null);
   public static Error SERVER_EXCEPTION_CATCH =
@@ -73,6 +75,7 @@ public class Constant {
   public static List<Error> supportErrors = Arrays.asList(
       INVALID_ACCOUNT_FORMAT,
       INVALID_TRANSACTION_FORMAT,
+      BROADCAST_TRANSACTION_FAILED,
       BLOCK_ID_OVER_CURRENT_LAST,
       SERVER_EXCEPTION_CATCH
   );

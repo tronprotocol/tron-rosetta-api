@@ -457,7 +457,7 @@ public class ConstructionApiController implements ConstructionApi {
       for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           String returnString = "";
-          Error error = new Error();
+          Error error = null;
           try {
             TransactionCapsule transactionSigned = new TransactionCapsule(
                     ByteArray.fromHexString(constructionSubmitRequest.getSignedTransaction()));
@@ -471,9 +471,8 @@ public class ConstructionApiController implements ConstructionApi {
               returnString = objectMapper.writeValueAsString(transactionIdentifierResponse);
             } else {
               statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-              error.setCode(result.getCodeValue());
-              error.setMessage(result.getMessage().toStringUtf8());
-              error.setRetriable(false);
+              error = Constant.BROADCAST_TRANSACTION_FAILED;
+              error.setDetails("" + result.getCodeValue() + ":" + result.getMessage().toStringUtf8());
               returnString = objectMapper.writeValueAsString(error);
             }
           } catch (BadItemException | JsonProcessingException e) {
