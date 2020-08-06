@@ -29,7 +29,6 @@ import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.db.Manager;
 import org.tron.core.db2.core.Chainbase;
 import org.tron.core.exception.BadItemException;
-import org.tron.core.services.interfaceOnSolidity.WalletOnSolidity;
 import org.tron.core.store.AccountStore;
 import org.tron.core.store.BalanceTraceStore;
 import org.tron.core.store.DynamicPropertiesStore;
@@ -51,6 +50,15 @@ public class AccountApiController implements AccountApi {
 
     @Autowired
     private BalanceTraceStore balanceTraceStore;
+
+    @Autowired
+    private Manager manager;
+
+    @Autowired
+    private AccountStore accountStore;
+
+    @Autowired
+    private DynamicPropertiesStore dynamicPropertiesStore;
 
     @org.springframework.beans.factory.annotation.Autowired
     public AccountApiController(NativeWebRequest request) {
@@ -84,44 +92,27 @@ public class AccountApiController implements AccountApi {
         if (getRequest().isPresent()) {
             for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {
                 if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
-                    AccountBalanceResponse response = new AccountBalanceResponse();
+                    AccountBalanceResponse response;
                     PartialBlockIdentifier partialBlockIdentifier = null;
-                    AccountIdentifier accountIdentifier = null;
                     try {
                         partialBlockIdentifier = accountBalanceRequest.getBlockIdentifier();
                         if (partialBlockIdentifier == null) {
-                            throw new BadItemException();
+                            response = getCurrentBalance(accountBalanceRequest);
+                        } else {
+                            response = getHistoryBalance(accountBalanceRequest);
                         }
-                        BlockCapsule.BlockId blockId = new BlockCapsule.BlockId(
-                            ByteArray.fromHexString(partialBlockIdentifier.getHash()), partialBlockIdentifier.getIndex());
-                        BlockBalanceTraceCapsule blockBalanceTraceCapsule
-                            = balanceTraceStore.getBlockBalanceTrace(blockId);
-                        if (blockBalanceTraceCapsule == null) {
-                            throw new BadItemException();
-                        }
-
-                        accountIdentifier = accountBalanceRequest.getAccountIdentifier();
-                        if (accountIdentifier == null) {
-                            throw new AccountException();
-                        }
-                        String address = accountIdentifier.getAddress();
-                        Long balance = blockBalanceTraceCapsule.getBalance(address);
-                        if (balance == null) {
-                            balance = 0L;
-                        }
-
-                        response.blockIdentifier(new BlockIdentifier().index(partialBlockIdentifier.getIndex()).hash(partialBlockIdentifier.getHash()))
-                            .addBalancesItem(new Amount().value(balance.toString()).currency(Default.CURRENCY));
                     } catch (BadItemException e) {
                         Error error = new Error()
                             .code(Constant.BLOCK_IS_NOT_EXISTS.getCode())
                             .message(Constant.BLOCK_IS_NOT_EXISTS.getMessage())
+                            .retriable(false)
                             .details(partialBlockIdentifier);
                         return ApiUtil.sendError(request, JSON.toJSONString(error));
                     } catch (AccountException e) {
                         Error error = new Error()
                             .code(Constant.ACCOUNT_IS_NOT_EXISTS.getCode())
                             .message(Constant.ACCOUNT_IS_NOT_EXISTS.getMessage())
+                            .retriable(false)
                             .details(partialBlockIdentifier);
                         return ApiUtil.sendError(request, JSON.toJSONString(error));
                     }
@@ -133,6 +124,64 @@ public class AccountApiController implements AccountApi {
         }
 
         return new ResponseEntity<>(HttpStatus.valueOf(200));
+    }
+
+    public AccountBalanceResponse getCurrentBalance(AccountBalanceRequest accountBalanceRequest)
+        throws AccountException {
+        try {
+            manager.setCursor(Chainbase.Cursor.SOLIDITY);
+            AccountIdentifier accountIdentifier = accountBalanceRequest.getAccountIdentifier();
+            if (accountIdentifier == null) {
+                throw new AccountException();
+            }
+
+            String address = accountIdentifier.getAddress();
+            AccountCapsule accountCapsule =
+                accountStore.get(Commons.decodeFromBase58Check(address));
+            String balance = String.valueOf(accountCapsule.getBalance());
+            Amount amount = new Amount();
+            amount.value(balance)
+                .currency(Default.CURRENCY);
+
+            BlockIdentifier blockIdentifier = new BlockIdentifier();
+            blockIdentifier.index(dynamicPropertiesStore.getLatestBlockHeaderNumber())
+                .hash(dynamicPropertiesStore.getLatestBlockHeaderHash().toString());
+            AccountBalanceResponse response = new AccountBalanceResponse();
+            response.blockIdentifier(blockIdentifier)
+                .addBalancesItem(amount);
+            return response;
+        } finally {
+            manager.setCursor(Chainbase.Cursor.HEAD);
+        }
+    }
+
+    public AccountBalanceResponse getHistoryBalance(AccountBalanceRequest accountBalanceRequest)
+        throws AccountException, BadItemException {
+        AccountIdentifier accountIdentifier = accountBalanceRequest.getAccountIdentifier();
+        if (accountIdentifier == null) {
+            throw new AccountException();
+        }
+
+        PartialBlockIdentifier partialBlockIdentifier = accountBalanceRequest.getBlockIdentifier();
+        BlockCapsule.BlockId blockId = new BlockCapsule.BlockId(
+            ByteArray.fromHexString(partialBlockIdentifier.getHash()), partialBlockIdentifier.getIndex());
+
+        BlockBalanceTraceCapsule blockBalanceTraceCapsule
+            = balanceTraceStore.getBlockBalanceTrace(blockId);
+        if (blockBalanceTraceCapsule == null) {
+            throw new BadItemException();
+        }
+
+        String address = accountIdentifier.getAddress();
+        Long balance = blockBalanceTraceCapsule.getBalance(address);
+        if (balance == null) {
+            throw new AccountException();
+        }
+
+        AccountBalanceResponse response = new AccountBalanceResponse();
+        response.blockIdentifier(new BlockIdentifier().index(partialBlockIdentifier.getIndex()).hash(partialBlockIdentifier.getHash()))
+            .addBalancesItem(new Amount().value(balance.toString()).currency(Default.CURRENCY));
+        return response;
     }
 
 }
