@@ -77,7 +77,7 @@
   "ignore_reconciliation_error": false,
   "exempt_accounts": "exempt_accounts.json",
   "bootstrap_balances": "bootstrap_balances.json",
-  "historical_balance_disabled": true,
+  "historical_balance_disabled": false,
   "interesting_accounts": "",
   "reconciliation_disabled": false,
   "inactive_discrepency_search_disabled": false,

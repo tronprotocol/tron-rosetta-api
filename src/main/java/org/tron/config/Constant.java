@@ -27,6 +27,10 @@ public class Constant {
       new Error().code(201).message("Block ID is bigger than current latest block").retriable(true).details(null);
   public static Error SERVER_EXCEPTION_CATCH =
       new Error().code(202).message("exception catch").retriable(false).details(null);
+  public final static Error BLOCK_IS_NOT_EXISTS =
+      new Error().code(203).message("this block is not exists.").retriable(false).details(null);
+  public final static Error ACCOUNT_IS_NOT_EXISTS =
+      new Error().code(204).message("this account is not exists.").retriable(false).details(null);
 
 
   public static String[] supportOperationTypes = new String[]{

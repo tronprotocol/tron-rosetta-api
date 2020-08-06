@@ -1,10 +1,13 @@
 package org.tron.api;
 
+import com.alibaba.fastjson.JSON;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import javax.security.auth.login.AccountException;
 import javax.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -16,12 +19,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.request.NativeWebRequest;
 import java.util.Optional;
+import org.tron.common.ApiUtil;
+import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.Commons;
+import org.tron.config.Constant;
 import org.tron.core.capsule.AccountCapsule;
+import org.tron.core.capsule.BlockBalanceTraceCapsule;
+import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.db.Manager;
 import org.tron.core.db2.core.Chainbase;
+import org.tron.core.exception.BadItemException;
 import org.tron.core.services.interfaceOnSolidity.WalletOnSolidity;
 import org.tron.core.store.AccountStore;
+import org.tron.core.store.BalanceTraceStore;
 import org.tron.core.store.DynamicPropertiesStore;
 import org.tron.model.AccountBalanceRequest;
 import org.tron.model.AccountBalanceResponse;
@@ -30,19 +40,17 @@ import org.tron.model.Amount;
 import org.tron.model.BlockIdentifier;
 import org.tron.model.Error;
 import org.tron.common.Default;
+import org.tron.model.PartialBlockIdentifier;
 
 @Controller
 @RequestMapping("${openapi.rosetta.base-path:}")
+@Slf4j(topic = "db")
 public class AccountApiController implements AccountApi {
 
     private final NativeWebRequest request;
-    @Autowired
-    private AccountStore accountStore;
-    @Autowired
-    private DynamicPropertiesStore dynamicPropertiesStore;
 
     @Autowired
-    private Manager dbManager;
+    private BalanceTraceStore balanceTraceStore;
 
     @org.springframework.beans.factory.annotation.Autowired
     public AccountApiController(NativeWebRequest request) {
@@ -77,25 +85,45 @@ public class AccountApiController implements AccountApi {
             for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {
                 if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
                     AccountBalanceResponse response = new AccountBalanceResponse();
+                    PartialBlockIdentifier partialBlockIdentifier = null;
+                    AccountIdentifier accountIdentifier = null;
                     try {
-                        dbManager.setCursor(Chainbase.Cursor.SOLIDITY);
-                        AccountIdentifier accountIdentifier =
-                            accountBalanceRequest.getAccountIdentifier();
-                        String address = accountIdentifier.getAddress();
-                        AccountCapsule accountCapsule =
-                            accountStore.get(Commons.decodeFromBase58Check(address));
-                        String balance = String.valueOf(accountCapsule.getBalance());
-                        Amount amount = new Amount();
-                        amount.value(balance)
-                            .currency(Default.CURRENCY);
+                        partialBlockIdentifier = accountBalanceRequest.getBlockIdentifier();
+                        if (partialBlockIdentifier == null) {
+                            throw new BadItemException();
+                        }
+                        BlockCapsule.BlockId blockId = new BlockCapsule.BlockId(
+                            ByteArray.fromHexString(partialBlockIdentifier.getHash()), partialBlockIdentifier.getIndex());
+                        BlockBalanceTraceCapsule blockBalanceTraceCapsule
+                            = balanceTraceStore.getBlockBalanceTrace(blockId);
+                        if (blockBalanceTraceCapsule == null) {
+                            throw new BadItemException();
+                        }
 
-                        BlockIdentifier blockIdentifier = new BlockIdentifier();
-                        blockIdentifier.index(dynamicPropertiesStore.getLatestBlockHeaderNumber())
-                            .hash(dynamicPropertiesStore.getLatestBlockHeaderHash().toString());
-                        response.blockIdentifier(blockIdentifier)
-                            .addBalancesItem(amount);
-                    } finally {
-                        dbManager.setCursor(Chainbase.Cursor.HEAD);
+                        accountIdentifier = accountBalanceRequest.getAccountIdentifier();
+                        if (accountIdentifier == null) {
+                            throw new AccountException();
+                        }
+                        String address = accountIdentifier.getAddress();
+                        Long balance = blockBalanceTraceCapsule.getBalance(address);
+                        if (balance == null) {
+                            balance = 0L;
+                        }
+
+                        response.blockIdentifier(new BlockIdentifier().index(partialBlockIdentifier.getIndex()).hash(partialBlockIdentifier.getHash()))
+                            .addBalancesItem(new Amount().value(balance.toString()).currency(Default.CURRENCY));
+                    } catch (BadItemException e) {
+                        Error error = new Error()
+                            .code(Constant.BLOCK_IS_NOT_EXISTS.getCode())
+                            .message(Constant.BLOCK_IS_NOT_EXISTS.getMessage())
+                            .details(partialBlockIdentifier);
+                        return ApiUtil.sendError(request, JSON.toJSONString(error));
+                    } catch (AccountException e) {
+                        Error error = new Error()
+                            .code(Constant.ACCOUNT_IS_NOT_EXISTS.getCode())
+                            .message(Constant.ACCOUNT_IS_NOT_EXISTS.getMessage())
+                            .details(partialBlockIdentifier);
+                        return ApiUtil.sendError(request, JSON.toJSONString(error));
                     }
                     HttpHeaders headers = new HttpHeaders();
                     headers.setContentType(MediaType.APPLICATION_JSON_UTF8);
@@ -105,7 +133,6 @@ public class AccountApiController implements AccountApi {
         }
 
         return new ResponseEntity<>(HttpStatus.valueOf(200));
-
     }
 
 }
