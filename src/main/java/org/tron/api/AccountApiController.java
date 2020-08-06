@@ -5,9 +5,13 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import javax.security.auth.login.AccountException;
 import javax.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -22,13 +26,16 @@ import java.util.Optional;
 import org.tron.common.ApiUtil;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.Commons;
+import org.tron.common.utils.StringUtil;
 import org.tron.config.Constant;
 import org.tron.core.capsule.AccountCapsule;
 import org.tron.core.capsule.BlockBalanceTraceCapsule;
 import org.tron.core.capsule.BlockCapsule;
+import org.tron.core.db.BlockIndexStore;
 import org.tron.core.db.Manager;
 import org.tron.core.db2.core.Chainbase;
 import org.tron.core.exception.BadItemException;
+import org.tron.core.exception.ItemNotFoundException;
 import org.tron.core.store.AccountStore;
 import org.tron.core.store.BalanceTraceStore;
 import org.tron.core.store.DynamicPropertiesStore;
@@ -40,6 +47,7 @@ import org.tron.model.BlockIdentifier;
 import org.tron.model.Error;
 import org.tron.common.Default;
 import org.tron.model.PartialBlockIdentifier;
+import org.tron.protos.contract.BalanceContract;
 
 @Controller
 @RequestMapping("${openapi.rosetta.base-path:}")
@@ -59,6 +67,9 @@ public class AccountApiController implements AccountApi {
 
     @Autowired
     private DynamicPropertiesStore dynamicPropertiesStore;
+
+    @Autowired
+    private BlockIndexStore blockIndexStore;
 
     @org.springframework.beans.factory.annotation.Autowired
     public AccountApiController(NativeWebRequest request) {
@@ -162,26 +173,70 @@ public class AccountApiController implements AccountApi {
             throw new AccountException();
         }
 
-        PartialBlockIdentifier partialBlockIdentifier = accountBalanceRequest.getBlockIdentifier();
-        BlockCapsule.BlockId blockId = new BlockCapsule.BlockId(
-            ByteArray.fromHexString(partialBlockIdentifier.getHash()), partialBlockIdentifier.getIndex());
-
-        BlockBalanceTraceCapsule blockBalanceTraceCapsule
-            = balanceTraceStore.getBlockBalanceTrace(blockId);
-        if (blockBalanceTraceCapsule == null) {
-            throw new BadItemException();
-        }
-
         String address = accountIdentifier.getAddress();
-        Long balance = blockBalanceTraceCapsule.getBalance(address);
-        if (balance == null) {
-            throw new AccountException();
+        BlockIdentifier blockIdentifier = new BlockIdentifier();
+        Amount amount = new Amount();
+        PartialBlockIdentifier partialBlockIdentifier = accountBalanceRequest.getBlockIdentifier();
+        long number = getNearestNumber(address, partialBlockIdentifier.getIndex());
+        if (number == -1) {
+            amount.setValue(String.valueOf(0L));
+            blockIdentifier.index(partialBlockIdentifier.getIndex())
+                .hash(partialBlockIdentifier.getHash());
+        } else {
+            BlockCapsule.BlockId blockId = new BlockCapsule.BlockId(
+                ByteArray.fromHexString(partialBlockIdentifier.getHash()), number);
+
+            BlockBalanceTraceCapsule blockBalanceTraceCapsule
+                = balanceTraceStore.getBlockBalanceTrace(blockId);
+            if (blockBalanceTraceCapsule == null) {
+                throw new BadItemException();
+            }
+
+            Long balance = blockBalanceTraceCapsule.getBalance(address);
+            if (balance == null) {
+                throw new AccountException();
+            }
+            amount.setValue(balance.toString());
+
+            if (number == partialBlockIdentifier.getIndex()) {
+                blockIdentifier.index(number)
+                    .hash(partialBlockIdentifier.getHash());
+            } else {
+                try {
+                    BlockCapsule.BlockId nearId = blockIndexStore.get(number);
+                    blockIdentifier.index(nearId.getNum())
+                        .hash(ByteArray.toHexString(nearId.getBytes()));
+                } catch (ItemNotFoundException e) {
+                    throw new BadItemException();
+                }
+            }
         }
 
         AccountBalanceResponse response = new AccountBalanceResponse();
-        response.blockIdentifier(new BlockIdentifier().index(partialBlockIdentifier.getIndex()).hash(partialBlockIdentifier.getHash()))
-            .addBalancesItem(new Amount().value(balance.toString()).currency(Default.CURRENCY));
+        response.blockIdentifier(blockIdentifier)
+            .addBalancesItem(amount.currency(Default.CURRENCY));
         return response;
+    }
+
+    public long getNearestNumber(String address, long number) {
+        byte[] key = Commons.decodeFromBase58Check(address);
+        BalanceContract.BlockNumber blockNumber = balanceTraceStore.getAllBlockNumberByAddress(key);
+        List<Long> numbers = blockNumber.getNumberList();
+        if (CollectionUtils.isEmpty(numbers)) {
+            return -1;
+        }
+
+        int index = Collections.binarySearch(numbers, number);
+
+        if (index >= 0) {
+            return number;
+        }
+
+        if (index == -1) {
+            return -1;
+        }
+
+        return numbers.get(Math.abs(index) - 2);
     }
 
 }
