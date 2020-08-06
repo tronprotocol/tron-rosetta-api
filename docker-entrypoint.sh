@@ -2,12 +2,11 @@
 set -eo pipefail
 shopt -s nullglob
 
-if [ "private" -eq $NET_TYPE ]
-then
-  java -jar $JARNAME -d chain -c conf/privatenet.conf
-elif [ "testnet" -eq $NET_TYPE ]
+if [[ "private" == $NET_TYPE ]]; then
+  java -jar $JARNAME -d chain -c conf/privatenet.conf -w
+elif [[ "testnet" == $NET_TYPE ]]; then
   java -jar $JARNAME -d chain -c conf/testnet.conf
-elif [ "mainnet" -eq $NET_TYPE ]
+elif [[ "mainnet" == $NET_TYPE ]]; then
   java -jar $JARNAME -d chain -c conf/mainnet.conf
 else
   echo "unknown net type" > error.log
