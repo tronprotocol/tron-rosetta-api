@@ -110,7 +110,7 @@ public class AccountApiController implements AccountApi {
                     try {
                         partialBlockIdentifier = accountBalanceRequest.getBlockIdentifier();
                         if (partialBlockIdentifier == null ||
-                            (partialBlockIdentifier.getHash() == null && partialBlockIdentifier.getIndex() == 0)) {
+                            (partialBlockIdentifier.getHash() == null && partialBlockIdentifier.getIndex() == null)) {
                             response = getCurrentBalance(accountBalanceRequest);
                         } else {
                             response = getHistoryBalance(accountBalanceRequest);
