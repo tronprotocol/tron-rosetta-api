@@ -11,6 +11,8 @@ import org.junit.Test;
 import org.tron.api.GrpcAPI;
 import org.tron.api.WalletGrpc;
 import org.tron.common.crypto.ECKey;
+import org.tron.common.crypto.Hash;
+import org.tron.common.utils.StringUtil;
 import org.tron.common.utils.Utils;
 import org.tron.core.Wallet;
 import org.tron.core.config.args.Args;
@@ -22,13 +24,21 @@ public class GenerateTransactionTest {
   private ManagedChannel channelFull = null;
   private WalletGrpc.WalletBlockingStub blockingStubFull = null;
 
+  // TRx2rc1v91HjUFdeBBgNSiqirctq94sAfA
   private final static String pk1 = "22a6aca17f8ec257cc57e190902767d7fedf908bba920b4fbeaab8f158e0da17";
+  // TRxETQim3Jn5TYqLeAnpyF5XdQeg7NUcSJ
   private final static String pk2 = "b6d8d3382c32d4d066c4f830a7e53c3da9ad8b9665dda4ca081b6cd4e807d09c";
+  // TRxUu1ZhEYsZw9AHyg8gXBmRSmUzaZPWaw
   private final static String pk3 = "03caf867c46aaf86d56aa446db80cb49305126b77bfaccfe57ab17bdb4993ccc";
+  // TRxgBU7HFTQvU6zPheLHphqpwhDKNxB6Rk
   private final static String pk4 = "763009595dd132aaf2d248999f2c6e7ba0acbbd9a9dfd88f7c2c158d97327645";
+  // TRxscEvPTPFaCxBMuFVmzEybzZWJZM9eAB
   private final static String pk5 = "a21a3074d4d84685efaffcd7c04e3eccb541ec4c85f61c41a099cd598ad39825";
+  // TRx32uh7TQjdnLFKyWVPKJBfEn1XWjJtcm
   private final static String pk6 = "541a2d585fcea7e9b1803df4eb49af0eb09f1fa2ce06aa5b8ed60ac95655d66d";
+  // TRxF8fZERk4XzQZe1SzvkS5nyNJ7x6tGZ5
   private final static String pk7 = "7d5a7396d6430edb7f66aa5736ef388f2bea862c9259de8ad8c2cfe080f6f5a0";
+  // TRxUztFKWdXy42MSdiHQoef5VLaXADMJp3
   private final static String pk8 = "7c4977817417495f4ca0c35ab3d5a25e247355d68f89f593f3fea2ab62c8644f";
 
   private static byte[] add1 = getFinalAddress(pk1);
@@ -60,13 +70,22 @@ public class GenerateTransactionTest {
     addrList.add(add6);
     addrList.add(add7);
     addrList.add(add8);
+    System.out.println(StringUtil.encode58Check(add1));
+    System.out.println(StringUtil.encode58Check(add2));
+    System.out.println(StringUtil.encode58Check(add3));
+    System.out.println(StringUtil.encode58Check(add4));
+    System.out.println(StringUtil.encode58Check(add5));
+    System.out.println(StringUtil.encode58Check(add6));
+    System.out.println(StringUtil.encode58Check(add7));
+    System.out.println(StringUtil.encode58Check(add8));
+
   }
 
   @Test
   public void generateSomeTransactions() {
     int during = 1*1000; // ms
     int runTime = 0;
-    int sleepOnce = 100;
+    int sleepOnce = 1000;
     int count = 0;
     while (true) {
       int index = count % 8;
@@ -80,6 +99,7 @@ public class GenerateTransactionTest {
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
+      count++;
 //      if ((runTime += sleepOnce) > during) {
 //        return;
 //      }
