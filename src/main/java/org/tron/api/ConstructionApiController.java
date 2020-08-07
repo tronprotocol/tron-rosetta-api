@@ -472,7 +472,7 @@ public class ConstructionApiController implements ConstructionApi {
             } else {
               statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
               error = Constant.BROADCAST_TRANSACTION_FAILED;
-              error.setDetails("" + result.getCodeValue() + ":" + result.getMessage().toStringUtf8());
+              error.setDetails(new Error().code(result.getCodeValue()).message(result.getMessage().toStringUtf8()));
               returnString = objectMapper.writeValueAsString(error);
             }
           } catch (BadItemException | JsonProcessingException e) {
