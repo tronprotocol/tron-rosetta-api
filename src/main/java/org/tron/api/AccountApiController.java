@@ -12,6 +12,7 @@ import javax.security.auth.login.AccountException;
 import javax.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -26,6 +27,7 @@ import java.util.Optional;
 import org.tron.common.ApiUtil;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.Commons;
+import org.tron.common.utils.Sha256Hash;
 import org.tron.common.utils.StringUtil;
 import org.tron.config.Constant;
 import org.tron.core.capsule.AccountCapsule;
@@ -107,7 +109,8 @@ public class AccountApiController implements AccountApi {
                     PartialBlockIdentifier partialBlockIdentifier = null;
                     try {
                         partialBlockIdentifier = accountBalanceRequest.getBlockIdentifier();
-                        if (partialBlockIdentifier == null) {
+                        if (partialBlockIdentifier == null ||
+                            (partialBlockIdentifier.getHash() == null && partialBlockIdentifier.getIndex() == 0)) {
                             response = getCurrentBalance(accountBalanceRequest);
                         } else {
                             response = getHistoryBalance(accountBalanceRequest);
@@ -177,13 +180,18 @@ public class AccountApiController implements AccountApi {
         BlockIdentifier blockIdentifier = new BlockIdentifier();
         Amount amount = new Amount();
         PartialBlockIdentifier partialBlockIdentifier = accountBalanceRequest.getBlockIdentifier();
-        long number = getNearestNumber(address, partialBlockIdentifier.getIndex());
-        if (number == -1) {
+        long index = partialBlockIdentifier.getIndex();
+        if (index == 0) {
+            index = new BlockCapsule.BlockId(Sha256Hash.wrap(ByteArray.fromHexString(partialBlockIdentifier.getHash()))).getNum();
+        }
+
+        long nearNumber = getNearestNumber(address, index);
+        if (nearNumber == -1) {
             amount.setValue(String.valueOf(0L));
             blockIdentifier.index(partialBlockIdentifier.getIndex())
                 .hash(partialBlockIdentifier.getHash());
         } else {
-            BlockCapsule.BlockId blockId = blockIndexStore.get(number);
+            BlockCapsule.BlockId blockId = blockIndexStore.get(nearNumber);
 
             BlockBalanceTraceCapsule blockBalanceTraceCapsule
                 = balanceTraceStore.getBlockBalanceTrace(blockId);
@@ -199,11 +207,11 @@ public class AccountApiController implements AccountApi {
 
 
             String blockHash = partialBlockIdentifier.getHash();
-            if (blockHash == null) {
-                blockHash = blockIndexStore.get(partialBlockIdentifier.getIndex()).getString();
+            if (StringUtils.isEmpty(blockHash)) {
+                blockHash = blockIndexStore.get(index).toString();
             }
 
-            blockIdentifier.index(partialBlockIdentifier.getIndex())
+            blockIdentifier.index(index)
                 .hash(blockHash);
 
 //            if (number == partialBlockIdentifier.getIndex()) {
