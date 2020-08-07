@@ -345,7 +345,7 @@ public class BlockApiController implements BlockApi {
     } catch (java.lang.Error | ItemNotFoundException | BadItemException | JsonProcessingException e) {
       e.printStackTrace();
       error = org.tron.config.Constant.SERVER_EXCEPTION_CATCH;
-      error.setDetails(e.getMessage());
+      error.setDetails(new org.tron.model.Error().message(e.getMessage()));
       returnString = JSON.toJSONString(error);
       return Pair.of(500, returnString);
     }
