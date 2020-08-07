@@ -112,7 +112,7 @@ public class AccountApiController implements AccountApi {
                         } else {
                             response = getHistoryBalance(accountBalanceRequest);
                         }
-                    } catch (BadItemException e) {
+                    } catch (BadItemException | ItemNotFoundException e) {
                         Error error = new Error()
                             .code(Constant.BLOCK_IS_NOT_EXISTS.getCode())
                             .message(Constant.BLOCK_IS_NOT_EXISTS.getMessage())
@@ -167,7 +167,7 @@ public class AccountApiController implements AccountApi {
     }
 
     public AccountBalanceResponse getHistoryBalance(AccountBalanceRequest accountBalanceRequest)
-        throws AccountException, BadItemException {
+        throws AccountException, BadItemException, ItemNotFoundException {
         AccountIdentifier accountIdentifier = accountBalanceRequest.getAccountIdentifier();
         if (accountIdentifier == null) {
             throw new AccountException();
@@ -183,8 +183,7 @@ public class AccountApiController implements AccountApi {
             blockIdentifier.index(partialBlockIdentifier.getIndex())
                 .hash(partialBlockIdentifier.getHash());
         } else {
-            BlockCapsule.BlockId blockId = new BlockCapsule.BlockId(
-                ByteArray.fromHexString(partialBlockIdentifier.getHash()), number);
+            BlockCapsule.BlockId blockId = blockIndexStore.get(number);
 
             BlockBalanceTraceCapsule blockBalanceTraceCapsule
                 = balanceTraceStore.getBlockBalanceTrace(blockId);
@@ -198,18 +197,27 @@ public class AccountApiController implements AccountApi {
             }
             amount.setValue(balance.toString());
 
-            if (number == partialBlockIdentifier.getIndex()) {
-                blockIdentifier.index(number)
-                    .hash(partialBlockIdentifier.getHash());
-            } else {
-                try {
-                    BlockCapsule.BlockId nearId = blockIndexStore.get(number);
-                    blockIdentifier.index(nearId.getNum())
-                        .hash(ByteArray.toHexString(nearId.getBytes()));
-                } catch (ItemNotFoundException e) {
-                    throw new BadItemException();
-                }
+
+            String blockHash = partialBlockIdentifier.getHash();
+            if (blockHash == null) {
+                blockHash = blockIndexStore.get(partialBlockIdentifier.getIndex()).getString();
             }
+
+            blockIdentifier.index(partialBlockIdentifier.getIndex())
+                .hash(blockHash);
+
+//            if (number == partialBlockIdentifier.getIndex()) {
+//                blockIdentifier.index(number)
+//                    .hash(partialBlockIdentifier.getHash());
+//            } else {
+//                try {
+//                    BlockCapsule.BlockId nearId = blockIndexStore.get(number);
+//                    blockIdentifier.index(nearId.getNum())
+//                        .hash(ByteArray.toHexString(nearId.getBytes()));
+//                } catch (ItemNotFoundException e) {
+//                    throw new BadItemException();
+//                }
+//            }
         }
 
         AccountBalanceResponse response = new AccountBalanceResponse();
