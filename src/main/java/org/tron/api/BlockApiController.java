@@ -71,12 +71,12 @@ public class BlockApiController implements BlockApi {
       TransactionBalanceTrace.Operation from = TransactionBalanceTrace.Operation.newBuilder()
           .setOperationIdentifier(0)
           .setAddress(transferContract.getOwnerAddress())
-          .setAmount(String.valueOf(0))
+          .setAmount(0)
           .build();
       TransactionBalanceTrace.Operation to = TransactionBalanceTrace.Operation.newBuilder()
           .setOperationIdentifier(1)
           .setAddress(transferContract.getToAddress())
-          .setAmount(String.valueOf(transferContract.getAmount()))
+          .setAmount(transferContract.getAmount())
           .build();
 
       TransactionBalanceTrace transactionBalanceTrace =
@@ -94,6 +94,7 @@ public class BlockApiController implements BlockApi {
     genesisBlock = convert(genesisBlockBalanceTraceCapsule);
   }
 
+  // only for genesis
   private Block convert(BlockBalanceTraceCapsule blockBalanceTraceCapsule) {
     Block block = new Block();
     BalanceContract.BlockBalanceTrace.BlockIdentifier blockIdentifierPB
@@ -103,12 +104,7 @@ public class BlockApiController implements BlockApi {
         .index(blockIdentifierPB.getNumber());
     block.setBlockIdentifier(blockIdentifier);
 
-    BalanceContract.BlockBalanceTrace.BlockIdentifier parentBlockIdentifierPB
-        = blockBalanceTraceCapsule.getInstance().getParentBlockIdentifier();
-    BlockIdentifier parentBlockIdentifier = new BlockIdentifier();
-    parentBlockIdentifier.hash(ByteArray.toHexString(parentBlockIdentifierPB.getHash().toByteArray()))
-        .index(parentBlockIdentifierPB.getNumber());
-    block.setParentBlockIdentifier(parentBlockIdentifier);
+    block.setParentBlockIdentifier(blockIdentifier);
 
     block.setTimestamp(blockBalanceTraceCapsule.getInstance().getTimestamp());
 
@@ -121,7 +117,7 @@ public class BlockApiController implements BlockApi {
         Operation op = new Operation()
             .operationIdentifier(new OperationIdentifier().index(operation.getOperationIdentifier()))
             .account(new AccountIdentifier().address(StringUtil.encode58Check(operation.getAddress().toByteArray())))
-            .amount(new Amount().currency(Default.CURRENCY).value(operation.getAmount()))
+            .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(operation.getAmount())))
             .type(transactionBalanceTrace.getType())
             .status(transactionBalanceTrace.getStatus());
 
@@ -365,7 +361,7 @@ public class BlockApiController implements BlockApi {
           .operationIdentifier(new OperationIdentifier().index(op.getOperationIdentifier()))
           .type(transactionBalanceTrace.getType())
           .status(transactionBalanceTrace.getStatus())
-          .amount(new Amount().currency(Default.CURRENCY).value(op.getAmount()))
+          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(op.getAmount())))
           .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
     }
 
