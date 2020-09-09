@@ -41,6 +41,7 @@ import org.tron.core.capsule.ContractCapsule;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.core.exception.BadItemException;
 import org.tron.core.exception.ItemNotFoundException;
+import org.tron.core.store.AccountTraceStore;
 import org.tron.core.store.BalanceTraceStore;
 import org.tron.model.*;
 import org.tron.protos.Protocol;
@@ -48,12 +49,17 @@ import org.tron.protos.contract.BalanceContract;
 import org.tron.protos.contract.BalanceContract.TransactionBalanceTrace;
 
 import static org.tron.common.utils.StringUtil.encode58Check;
+import static org.tron.protos.Protocol.Transaction.Contract.ContractType.TransferContract;
+import static org.tron.protos.Protocol.Transaction.Result.contractResult.SUCCESS;
 
 @Controller
 @RequestMapping("${openapi.rosetta.base-path:}")
 public class BlockApiController implements BlockApi {
   @Autowired
   private ChainBaseManager chainBaseManager;
+
+  @Autowired
+  private AccountTraceStore accountTraceStore;
 
   private Block genesisBlock;
 
@@ -68,26 +74,23 @@ public class BlockApiController implements BlockApi {
     List<TransactionCapsule> transactionCapsules = genesis.getTransactions();
     for (TransactionCapsule transactionCapsule : transactionCapsules) {
       BalanceContract.TransferContract transferContract = getTransferContract(transactionCapsule);
-      TransactionBalanceTrace.Operation from = TransactionBalanceTrace.Operation.newBuilder()
-          .setOperationIdentifier(0)
-          .setAddress(transferContract.getOwnerAddress())
-          .setAmount(0)
-          .build();
-      TransactionBalanceTrace.Operation to = TransactionBalanceTrace.Operation.newBuilder()
-          .setOperationIdentifier(1)
-          .setAddress(transferContract.getToAddress())
-          .setAmount(transferContract.getAmount())
-          .build();
+//      TransactionBalanceTrace.Operation operation = TransactionBalanceTrace.Operation.newBuilder()
+//          .setOperationIdentifier(0)
+//          .setAddress(transferContract.getToAddress())
+//          .setAmount(transferContract.getAmount())
+//          .build();
 
       TransactionBalanceTrace transactionBalanceTrace =
           TransactionBalanceTrace.newBuilder()
               .setTransactionIdentifier(transactionCapsule.getTransactionId().getByteString())
-              .setType(Protocol.Transaction.Contract.ContractType.TransferContract.name())
-              .setStatus(Protocol.Transaction.Result.contractResult.SUCCESS.name())
-//              .addOperation(from)
-//              .addOperation(to)
+              .setType(TransferContract.name())
+              .setStatus(SUCCESS.name())
+//              .addOperation(operation)
               .build();
       genesisBlockBalanceTraceCapsule.addTransactionBalanceTrace(transactionBalanceTrace);
+
+      accountTraceStore.recordBalanceWithBlock(
+          transferContract.getToAddress().toByteArray(), 0, transferContract.getAmount());
     }
 
     genesisBlockBalanceTrace = genesisBlockBalanceTraceCapsule;

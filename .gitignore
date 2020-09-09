@@ -79,3 +79,5 @@ Wallet
 
 # vm_trace
 /vm_trace/
+
+result.json
