@@ -1,0 +1,10 @@
+**/build
+**/logs
+**/output-directory
+**/data
+**/*output*
+**/.idea
+**/*iml
+**/.DS_Store
+**/*.war
+**/.grade
