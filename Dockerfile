@@ -6,14 +6,12 @@ ENV DATADIR="chain"
 
 ENV NET_TYPE="mainnet"
 
+ADD . /tron-rosetta-api
+
 RUN set -o errexit -o nounset \
-    && yum -y install git \
     && mkdir -p $BASE_DIR \
-    && echo "git clone" \
-    && cd / \
-    && git clone https://github.com/tronprotocol/tron-rosetta-api.git \
-    && cd tron-rosetta-api \
-    && ./gradlew build -x test \
+    && cd /tron-rosetta-api \
+    && ./gradlew build -xtest -xcheck --refresh-dependencies \
     && mkdir =p $BASE_DIR/conf \
     && cp -r src/main/resources/net_conf/* $BASE_DIR/conf \
     && cd build/libs \

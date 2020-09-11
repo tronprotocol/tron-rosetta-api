@@ -15,7 +15,7 @@ $ git clone https://github.com/tronprotocol/tron-rosetta-api.git
 Compile docker image and use MainNet configuration for the image by default:
 ```
 $ cd tron-rosetta-api
-$ docker build -t tron-roseta-server
+$ docker build -t tron-rosetta-server .
 ```
 
 
@@ -23,21 +23,21 @@ $ docker build -t tron-roseta-server
 
 Start in Docker
 ```
-$ docker run --name tron-rosetta -d -p 8080:8080 tron-roseta-server:latest
+$ docker run --name tron-rosetta -d -p 8080:8080 tron-rosetta-server:latest
 ```
 
 You can also customize a data directory
 ```
-$ docker run --name tron-rosetta -d -p 8080:8080 -v ${realpath data}:/data/chain tron-roseta-server:latest
+$ docker run --name tron-rosetta -d -p 8080:8080 -v ${realpath data}:/data/chain tron-rosetta-server:latest
 ```
 
 In case you wish to connect to the test net or setup a private net, set the `NET_TYPE` as such:
 ```
 # test net
-$ docker run --name tron-rosetta -d --env NET_TYPE="testnet" -p 8080:8080 -v ${realpath data}:/data/chain tron-roseta-server:latest
+$ docker run --name tron-rosetta -d --env NET_TYPE="testnet" -p 8080:8080 -v ${realpath data}:/data/chain tron-rosetta-server:latest
 
 # private net
-$ docker run --name tron-rosetta -d --env NET_TYPE="private" -p 8080:8080 -v ${realpath data}:/data/chain tron-roseta-server:latest
+$ docker run --name tron-rosetta -d --env NET_TYPE="private" -p 8080:8080 -v ${realpath data}:/data/chain tron-rosetta-server:latest
 ```
 
 

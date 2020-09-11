@@ -192,10 +192,10 @@ public class BlockApiController implements BlockApi {
             BlockCapsule tronBlock = null;
             BlockCapsule tronBlockParent = null;
 
-            if (blockIndex != null &&
-                blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum()) {
-              throw new ItemNotFoundException("request block index > solidified index");
-            }
+//            if (blockIndex != null &&
+//                blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum()) {
+//              throw new ItemNotFoundException("request block index > solidified index");
+//            }
 
             if (blockIndex != null && blockIndex == 0) {
               blockResponse.setBlock(genesisBlock);
