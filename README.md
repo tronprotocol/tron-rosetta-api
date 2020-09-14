@@ -15,7 +15,7 @@ $ git clone https://github.com/tronprotocol/tron-rosetta-api.git
 Compile docker image and use MainNet configuration for the image by default:
 ```
 $ cd tron-rosetta-api
-$ docker build -t tron-rosetta-server .
+$ docker build -t tron-rosetta-api .
 ```
 
 
@@ -23,21 +23,48 @@ $ docker build -t tron-rosetta-server .
 
 Start in Docker
 ```
-$ docker run --name tron-rosetta -d -p 8080:8080 tron-rosetta-server:latest
+$ docker run --name tron-rosetta-api -d -p 8080:8080 tron-rosetta-api:latest
 ```
 
-You can also customize a data directory
+You can also customize a data or log directory
 ```
-$ docker run --name tron-rosetta -d -p 8080:8080 -v ${realpath data}:/data/chain tron-rosetta-server:latest
+$ docker run --name tron-rosetta-api -d -p 8080:8080 -v ${realpath data}:/data -v ${realpath logs}:/logs tron-rosetta-api:latest
 ```
 
 In case you wish to connect to the test net or setup a private net, set the `NET_TYPE` as such:
 ```
 # test net
-$ docker run --name tron-rosetta -d --env NET_TYPE="testnet" -p 8080:8080 -v ${realpath data}:/data/chain tron-rosetta-server:latest
+$ docker run --name tron-rosetta-api -d --env NET_TYPE="testnet" -p 8080:8080 -v ${realpath data}:/data -v ${realpath logs}:/logs tron-rosetta-api:latest
 
 # private net
-$ docker run --name tron-rosetta -d --env NET_TYPE="private" -p 8080:8080 -v ${realpath data}:/data/chain tron-rosetta-server:latest
+$ docker run --name tron-rosetta-api -d --env NET_TYPE="privatenet" -p 8080:8080 -v ${realpath data}:/data -v ${realpath logs}:/logs tron-rosetta-api:latest
+```
+
+## TRON_OPTIONS
+You can change the TRON_OPTIONS parameter, the default value is
+```
+TRON_OPTIONS=""
+```
+
+e.g. If the node is a SR node to produce blocks.
+```
+docker run --name tron-rosetta-api -d --env TRON_OPTIONS="--witness" --env NET_TYPE="privatenet" -p 8080:8080 tron-rosetta-api:latest
+```
+
+## JVM OPTIONS
+You can change the JVM_OPTIONS parameter, the default value is
+```
+JVM_OPTIONS="-Xms8G -Xmx8G -XX:NewRatio=7 \
+-XX:+UseConcMarkSweepGC -XX:+PrintGCDetails -Xloggc:./logs/gc.log \
+-XX:+PrintGCDateStamps -XX:+CMSParallelRemarkEnabled -XX:ReservedCodeCacheSize=256m \
+-XX:+CMSScavengeBeforeRemark"
+```
+e.g.
+```
+$ docker run --name tron-rosetta-api -d --env JVM_OPTIONS="-Xms8G -Xmx12G -XX:NewRatio=7 \
+                                                         -XX:+UseConcMarkSweepGC -XX:+PrintGCDetails -Xloggc:./logs/gc.log \
+                                                         -XX:+PrintGCDateStamps -XX:+CMSParallelRemarkEnabled -XX:ReservedCodeCacheSize=256m \
+                                                         -XX:+CMSScavengeBeforeRemark" -p 8080:8080 -p 50051:50051 -v `pwd`/data:/data -v `pwd`/logs:/logs tron-rosetta-api:latest
 ```
 
 
