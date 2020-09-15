@@ -93,7 +93,7 @@
        {
         "input": "{\"network\":\"mainnet\", \"blockchain\":\"tron\"}",
         "type": "set_variable",
-        "output_path": "transfer.network"
+        "output_path": "TransferContract.network"
        },
        {
         "input": "{\"symbol\":\"TRX\", \"decimals\":6}",
@@ -106,10 +106,6 @@
         "output_path": "sender"
        },
        {
-        "input": "{\"sender\":{{sender}}}",
-        "type": "print_message"
-       },
-       {
         "input": "\"100000\"",
         "type": "set_variable",
         "output_path": "max_fee"
@@ -118,10 +114,6 @@
         "input": "{\"operation\":\"subtraction\", \"left_value\": {{sender.balance.value}}, \"right_value\": {{max_fee}}}",
         "type": "math",
         "output_path": "available_amount"
-       },
-       {
-        "input": "{\"available_amount\":{{available_amount}}}",
-        "type": "print_message"
        },
        {
         "input": "{\"minimum\": \"1\", \"maximum\": {{available_amount}}}",
@@ -138,31 +130,19 @@
         "output_path": "sender_amount"
        },
        {
-        "input": "{\"sender_amount\":{{sender_amount}}}",
-        "type": "print_message"
-       },
-       {
         "input": "{\"not_account_identifier\":[{{sender.account_identifier}}], \"minimum_balance\":{\"value\": \"0\", \"currency\": {{currency}}}, \"create_limit\": 100, \"create_probability\": 50}",
         "type": "find_balance",
         "output_path": "recipient"
        },
        {
-        "input": "{\"recipient\":{{recipient}}}",
-        "type": "print_message"
-       },
-       {
-        "input": "\"18\"",
+        "input": "\"1\"",
         "type": "set_variable",
-        "output_path": "transfer.confirmation_depth"
+        "output_path": "TransferContract.confirmation_depth"
        },
        {
         "input": "[{\"operation_identifier\":{\"index\":0},\"type\":\"TransferContract\",\"account\":{{sender.account_identifier}},\"amount\":{\"value\":{{sender_amount}},\"currency\":{{currency}}}},{\"operation_identifier\":{\"index\":1},\"type\":\"TransferContract\",\"account\":{{recipient.account_identifier}},\"amount\":{\"value\":{{recipient_amount}},\"currency\":{{currency}}}}]",
         "type": "set_variable",
-        "output_path": "transfer.operations"
-       },
-       {
-        "input": "{\"transfer\":{{transfer}}}",
-        "type": "print_message"
+        "output_path": "TransferContract.operations"
        }
       ]
      }
@@ -171,7 +151,7 @@
   ],
   "end_conditions": {
    "create_account": 100,
-   "transfer": 50
+   "transfer": 10
   }
  },
  "data": {

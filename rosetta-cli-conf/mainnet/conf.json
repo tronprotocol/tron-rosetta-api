@@ -93,7 +93,7 @@
        {
         "input": "{\"network\":\"mainnet\", \"blockchain\":\"tron\"}",
         "type": "set_variable",
-        "output_path": "transfer.network"
+        "output_path": "TransferContract.network"
        },
        {
         "input": "{\"symbol\":\"TRX\", \"decimals\":6}",
@@ -135,14 +135,14 @@
         "output_path": "recipient"
        },
        {
-        "input": "\"1\"",
+        "input": "\"18\"",
         "type": "set_variable",
-        "output_path": "transfer.confirmation_depth"
+        "output_path": "TransferContract.confirmation_depth"
        },
        {
-        "input": "[{\"operation_identifier\":{\"index\":0},\"type\":\"transfer\",\"account\":{{sender.account_identifier}},\"amount\":{\"value\":{{sender_amount}},\"currency\":{{currency}}}},{\"operation_identifier\":{\"index\":1},\"type\":\"transfer\",\"account\":{{recipient.account_identifier}},\"amount\":{\"value\":{{recipient_amount}},\"currency\":{{currency}}}}]",
+        "input": "[{\"operation_identifier\":{\"index\":0},\"type\":\"TransferContract\",\"account\":{{sender.account_identifier}},\"amount\":{\"value\":{{sender_amount}},\"currency\":{{currency}}}},{\"operation_identifier\":{\"index\":1},\"type\":\"TransferContract\",\"account\":{{recipient.account_identifier}},\"amount\":{\"value\":{{recipient_amount}},\"currency\":{{currency}}}}]",
         "type": "set_variable",
-        "output_path": "transfer.operations"
+        "output_path": "TransferContract.operations"
        }
       ]
      }
@@ -151,7 +151,7 @@
   ],
   "end_conditions": {
    "create_account": 100,
-   "transfer": 1000
+   "transfer": 10
   }
  },
  "data": {
