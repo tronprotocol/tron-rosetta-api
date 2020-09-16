@@ -125,9 +125,9 @@ public class NetworkApiController implements NetworkApi {
                         .middlewareVersion(Constant.middlewareVersion)
         );
         Allow allow = new Allow();
-        allow.setHistoricalBalanceLookup(false);
+        allow.setHistoricalBalanceLookup(true);
        // allow.setHistoricalBalanceLookup(true);
-        allow.setOperationTypes(Arrays.asList(Constant.supportOperationTypes));
+        allow.setOperationTypes(Constant.supportOperationTypes);
         allow.setOperationStatuses(Constant.supportOperationStatuses);
         allow.setErrors(Constant.supportErrors);
 
