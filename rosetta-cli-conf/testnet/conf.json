@@ -6,6 +6,7 @@
  "online_url": "http://localhost:8080",
  "data_directory": "data",
  "http_timeout": 5000,
+ "max_retries": 10,
  "retry_elapsed_time": 600,
  "max_online_connections": 0,
  "max_sync_concurrency": 0,
