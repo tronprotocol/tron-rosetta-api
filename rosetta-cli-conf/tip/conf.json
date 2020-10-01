@@ -156,7 +156,7 @@
   }
  },
  "data": {
-  "start_index": 18120000,
+  "start_index": 18000000,
   "active_reconciliation_concurrency": 16,
   "inactive_reconciliation_concurrency": 4,
   "inactive_reconciliation_frequency": 250,
