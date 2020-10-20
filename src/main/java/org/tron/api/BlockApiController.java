@@ -1,5 +1,6 @@
 package org.tron.api;
 
+import com.google.common.primitives.Longs;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import java.lang.Error;
@@ -61,10 +62,6 @@ public class BlockApiController implements BlockApi {
   @Autowired
   private AccountTraceStore accountTraceStore;
 
-  private Block genesisBlock;
-
-  private BlockBalanceTraceCapsule genesisBlockBalanceTrace;
-
   private final NativeWebRequest request;
 
   @PostConstruct
@@ -74,18 +71,18 @@ public class BlockApiController implements BlockApi {
     List<TransactionCapsule> transactionCapsules = genesis.getTransactions();
     for (TransactionCapsule transactionCapsule : transactionCapsules) {
       BalanceContract.TransferContract transferContract = getTransferContract(transactionCapsule);
-//      TransactionBalanceTrace.Operation operation = TransactionBalanceTrace.Operation.newBuilder()
-//          .setOperationIdentifier(0)
-//          .setAddress(transferContract.getToAddress())
-//          .setAmount(transferContract.getAmount())
-//          .build();
+      TransactionBalanceTrace.Operation operation = TransactionBalanceTrace.Operation.newBuilder()
+          .setOperationIdentifier(0)
+          .setAddress(transferContract.getToAddress())
+          .setAmount(transferContract.getAmount())
+          .build();
 
       TransactionBalanceTrace transactionBalanceTrace =
           TransactionBalanceTrace.newBuilder()
               .setTransactionIdentifier(transactionCapsule.getTransactionId().getByteString())
               .setType(TransferContract.name())
               .setStatus(SUCCESS.name())
-//              .addOperation(operation)
+              .addOperation(operation)
               .build();
       genesisBlockBalanceTraceCapsule.addTransactionBalanceTrace(transactionBalanceTrace);
 
@@ -93,43 +90,7 @@ public class BlockApiController implements BlockApi {
           transferContract.getToAddress().toByteArray(), 0, transferContract.getAmount());
     }
 
-    genesisBlockBalanceTrace = genesisBlockBalanceTraceCapsule;
-    genesisBlock = convert(genesisBlockBalanceTraceCapsule);
-  }
-
-  // only for genesis
-  private Block convert(BlockBalanceTraceCapsule blockBalanceTraceCapsule) {
-    Block block = new Block();
-    BalanceContract.BlockBalanceTrace.BlockIdentifier blockIdentifierPB
-        = blockBalanceTraceCapsule.getInstance().getBlockIdentifier();
-    BlockIdentifier blockIdentifier = new BlockIdentifier();
-    blockIdentifier.hash(ByteArray.toHexString(blockIdentifierPB.getHash().toByteArray()))
-        .index(blockIdentifierPB.getNumber());
-    block.setBlockIdentifier(blockIdentifier);
-
-    block.setParentBlockIdentifier(blockIdentifier);
-
-    block.setTimestamp(blockBalanceTraceCapsule.getInstance().getTimestamp());
-
-    for (TransactionBalanceTrace transactionBalanceTrace : blockBalanceTraceCapsule.getInstance().getTransactionBalanceTraceList()) {
-      Transaction transaction = new Transaction()
-          .transactionIdentifier(new TransactionIdentifier()
-              .hash(ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray())));
-
-      for (TransactionBalanceTrace.Operation operation : transactionBalanceTrace.getOperationList()) {
-        Operation op = new Operation()
-            .operationIdentifier(new OperationIdentifier().index(operation.getOperationIdentifier()))
-            .account(new AccountIdentifier().address(StringUtil.encode58Check(operation.getAddress().toByteArray())))
-            .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(operation.getAmount())))
-            .type(transactionBalanceTrace.getType())
-            .status(transactionBalanceTrace.getStatus());
-
-        transaction.addOperationsItem(op);
-      }
-      block.addTransactionsItem(transaction);
-    }
-
-    return block;
+    chainBaseManager.getBalanceTraceStore().put(Longs.toByteArray(0), genesisBlockBalanceTraceCapsule);
   }
 
   public BalanceContract.TransferContract getTransferContract(TransactionCapsule transactionCapsule) {
@@ -197,56 +158,52 @@ public class BlockApiController implements BlockApi {
 //              throw new ItemNotFoundException("request block index > solidified index");
 //            }
 
-            if (blockIndex != null && blockIndex == 0) {
-              blockResponse.setBlock(genesisBlock);
+            //1. get block
+            if (null != blockIndex) {
+              tronBlock = chainBaseManager.getBlockByNum(blockIndex);
+            } else if (null != blockHash) {
+              tronBlock = chainBaseManager.getBlockStore()
+                  .get(ByteString.copyFrom(ByteArray.fromHexString(blockHash)).toByteArray());
             } else {
-              //1. get block
-              if (null != blockIndex) {
-                tronBlock = chainBaseManager.getBlockByNum(blockIndex);
-              } else if (null != blockHash) {
-                tronBlock = chainBaseManager.getBlockStore()
-                    .get(ByteString.copyFrom(ByteArray.fromHexString(blockHash)).toByteArray());
-              } else {
-                tronBlock = chainBaseManager.getBlockStore().getBlockByLatestNum(1).get(0);
-              }
-
-              if (null != tronBlock && tronBlock.getNum() > 0) {
-                tronBlockParent = chainBaseManager.getBlockById(tronBlock.getParentHash());
-              } else {
-                tronBlockParent = tronBlock;
-              }
-
-              //2. set block info
-              rstBlock.setBlockIdentifier(
-                  new BlockIdentifier()
-                      .index(tronBlock.getNum())
-                      .hash(ByteArray.toHexString(tronBlock.getBlockId().getBytes())));
-              rstBlock.setParentBlockIdentifier(
-                  new BlockIdentifier()
-                      .index(tronBlockParent.getNum())
-                      .hash(ByteArray.toHexString(tronBlockParent.getBlockId().getBytes())));
-              rstBlock.setTimestamp(tronBlock.getTimeStamp());
-
-              //3. set tx info
-              List<org.tron.model.Transaction> rstTxs = Lists.newArrayList();
-              BlockBalanceTraceCapsule blockBalanceTraceCapsule =
-                  chainBaseManager.getBalanceTraceStore()
-                      .getBlockBalanceTrace(tronBlock.getBlockId());
-              if (null == blockBalanceTraceCapsule) {
-                throw new ItemNotFoundException("block balance info not find");
-              }
-              BalanceContract.BlockBalanceTrace blockBalanceTrace =
-                  blockBalanceTraceCapsule.getInstance();
-
-              List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
-              for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
-                rstTxs.add(toRosettaTx(tronTx));
-              }
-              rstBlock.setTransactions(rstTxs);
-
-              //4. response
-              blockResponse.setBlock(rstBlock);
+              tronBlock = chainBaseManager.getBlockStore().getBlockByLatestNum(1).get(0);
             }
+
+            if (null != tronBlock && tronBlock.getNum() > 0) {
+              tronBlockParent = chainBaseManager.getBlockById(tronBlock.getParentHash());
+            } else {
+              tronBlockParent = tronBlock;
+            }
+
+            //2. set block info
+            rstBlock.setBlockIdentifier(
+                new BlockIdentifier()
+                    .index(tronBlock.getNum())
+                    .hash(ByteArray.toHexString(tronBlock.getBlockId().getBytes())));
+            rstBlock.setParentBlockIdentifier(
+                new BlockIdentifier()
+                    .index(tronBlockParent.getNum())
+                    .hash(ByteArray.toHexString(tronBlockParent.getBlockId().getBytes())));
+            rstBlock.setTimestamp(tronBlock.getTimeStamp());
+
+            //3. set tx info
+            List<org.tron.model.Transaction> rstTxs = Lists.newArrayList();
+            BlockBalanceTraceCapsule blockBalanceTraceCapsule =
+                chainBaseManager.getBalanceTraceStore()
+                    .getBlockBalanceTrace(tronBlock.getBlockId());
+            if (null == blockBalanceTraceCapsule) {
+              throw new ItemNotFoundException("block balance info not find");
+            }
+            BalanceContract.BlockBalanceTrace blockBalanceTrace =
+                blockBalanceTraceCapsule.getInstance();
+
+            List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
+            for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
+              rstTxs.add(toRosettaTx(tronTx));
+            }
+            rstBlock.setTransactions(rstTxs);
+
+            //4. response
+            blockResponse.setBlock(rstBlock);
 
             returnString = mapper.writeValueAsString(blockResponse);
           } catch (java.lang.Error | ItemNotFoundException | BadItemException | JsonProcessingException e) {
@@ -319,13 +276,9 @@ public class BlockApiController implements BlockApi {
       }
 
       //1. get blockBalanceTrace
-      BlockBalanceTraceCapsule blockBalanceTraceCapsule;
-      if (blockIndex == 0) {
-        blockBalanceTraceCapsule = genesisBlockBalanceTrace;
-      } else {
-        BlockCapsule tronBlock = chainBaseManager.getBlockByNum(blockIndex);
-        blockBalanceTraceCapsule = chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId());
-      }
+      BlockCapsule tronBlock = chainBaseManager.getBlockByNum(blockIndex);
+      BlockBalanceTraceCapsule blockBalanceTraceCapsule = chainBaseManager.getBalanceTraceStore().getBlockBalanceTrace(tronBlock.getBlockId());
+
       if (null == blockBalanceTraceCapsule) {
         throw new ItemNotFoundException("block balance info not find");
       }
