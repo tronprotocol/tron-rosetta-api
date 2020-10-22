@@ -165,7 +165,6 @@
   "log_reconciliations": false,
   "ignore_reconciliation_error": false,
   "exempt_accounts": "./exempt_accounts.json",
-  "bootstrap_balances": "./bootstrap_balances.json",
   "historical_balance_enabled": true,
   "interesting_accounts": "",
   "reconciliation_disabled": false,

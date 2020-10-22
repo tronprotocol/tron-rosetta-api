@@ -181,11 +181,11 @@ public class AccountApiController implements AccountApi {
     PartialBlockIdentifier partialBlockIdentifier = accountBalanceRequest.getBlockIdentifier();
     Long index = partialBlockIdentifier.getIndex();
     String hash = partialBlockIdentifier.getHash();
-    if ((index == null || index <= 0) && StringUtils.isEmpty(hash)) {
+    if ((index == null || index < 0) && StringUtils.isEmpty(hash)) {
       throw new ItemNotFoundException();
     }
 
-    if (index == null || index <= 0) {
+    if (index == null || index < 0) {
       index = new BlockCapsule.BlockId(Sha256Hash.wrap(ByteArray.fromHexString(hash))).getNum();
     }
     if (StringUtils.isEmpty(hash)) {
