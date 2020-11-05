@@ -34,8 +34,8 @@ import org.tron.common.Default;
 import org.tron.common.utils.Base58;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.StringUtil;
+import org.tron.config.Constant;
 import org.tron.core.ChainBaseManager;
-import org.tron.core.Constant;
 import org.tron.core.capsule.BlockBalanceTraceCapsule;
 import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.capsule.ContractCapsule;
@@ -270,7 +270,7 @@ public class BlockApiController implements BlockApi {
       System.out.println("blockIndex:" + blockIndex);
 
       if (blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum()) {
-        error = org.tron.config.Constant.BLOCK_ID_OVER_CURRENT_LAST;
+        error = Constant.newError(Constant.BLOCK_ID_OVER_CURRENT_LAST);
         returnString = JSON.toJSONString(error);
         return Pair.of(400, returnString);
       }
@@ -296,7 +296,7 @@ public class BlockApiController implements BlockApi {
       returnString = mapper.writeValueAsString(blockTransactionResponse);
     } catch (java.lang.Error | ItemNotFoundException | BadItemException | JsonProcessingException e) {
       e.printStackTrace();
-      error = org.tron.config.Constant.SERVER_EXCEPTION_CATCH;
+      error = Constant.newError(Constant.SERVER_EXCEPTION_CATCH);
       error.setDetails(new org.tron.model.Error().message(e.getMessage()));
       returnString = JSON.toJSONString(error);
       return Pair.of(500, returnString);

@@ -180,7 +180,7 @@ public class ConstructionApiController implements ConstructionApi {
           } catch (java.lang.Error | InvalidProtocolBufferException | JsonProcessingException | BadItemException e) {
             e.printStackTrace();
             statusCode.set(500);
-            error = Constant.INVALID_TRANSACTION_FORMAT;
+            error = Constant.newError(Constant.INVALID_TRANSACTION_FORMAT);
             returnString = JSON.toJSONString(error);
           }
 
@@ -317,7 +317,7 @@ public class ConstructionApiController implements ConstructionApi {
           } catch (BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            Error error = Constant.INVALID_TRANSACTION_FORMAT;
+            Error error = Constant.newError(Constant.INVALID_TRANSACTION_FORMAT);
             try {
               returnString = objectMapper.writeValueAsString(error);
             } catch (JsonProcessingException ex) {
@@ -410,7 +410,7 @@ public class ConstructionApiController implements ConstructionApi {
           } catch (BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            Error error = Constant.INVALID_TRANSACTION_FORMAT;
+            Error error = Constant.newError(Constant.INVALID_TRANSACTION_FORMAT);
             try {
               returnString = objectMapper.writeValueAsString(error);
             } catch (JsonProcessingException ex) {
@@ -471,14 +471,14 @@ public class ConstructionApiController implements ConstructionApi {
               returnString = objectMapper.writeValueAsString(transactionIdentifierResponse);
             } else {
               statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-              error = Constant.BROADCAST_TRANSACTION_FAILED;
-              error.setDetails(new Error().code(result.getCodeValue()).message(result.getMessage().toStringUtf8()));
+              error = Constant.newError(Constant.BROADCAST_TRANSACTION_FAILED);
+              error.details(result.getCodeValue()).message(result.getMessage().toStringUtf8());
               returnString = objectMapper.writeValueAsString(error);
             }
           } catch (BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            error = Constant.INVALID_TRANSACTION_FORMAT;
+            error = Constant.newError(Constant.INVALID_TRANSACTION_FORMAT);
             try {
               returnString = objectMapper.writeValueAsString(error);
             } catch (JsonProcessingException ex) {

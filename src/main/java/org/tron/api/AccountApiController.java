@@ -118,16 +118,12 @@ public class AccountApiController implements AccountApi {
               response = getHistoryBalance(accountBalanceRequest);
             }
           } catch (ItemNotFoundException e) {
-            Error error = new Error()
-                .code(Constant.BLOCK_IS_NOT_EXISTS.getCode())
-                .message(Constant.BLOCK_IS_NOT_EXISTS.getMessage())
+            Error error = Constant.newError(Constant.BLOCK_IS_NOT_EXISTS)
                 .retriable(false)
                 .details(partialBlockIdentifier);
             return ApiUtil.sendError(request, JSON.toJSONString(error));
           } catch (AccountException e) {
-            Error error = new Error()
-                .code(Constant.ACCOUNT_IS_NOT_EXISTS.getCode())
-                .message(Constant.ACCOUNT_IS_NOT_EXISTS.getMessage())
+            Error error = Constant.newError(Constant.ACCOUNT_IS_NOT_EXISTS)
                 .retriable(false)
                 .details(partialBlockIdentifier);
             return ApiUtil.sendError(request, JSON.toJSONString(error));

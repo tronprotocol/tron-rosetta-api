@@ -50,6 +50,15 @@ public class Constant {
       new Error().code(204).message("this account is not exists.").retriable(false).details(null);
 
 
+  public static Error newError(Error error) {
+    return new Error()
+        .code(error.getCode())
+        .details(error.getDetails())
+        .retriable(error.getRetriable())
+        .description(error.getDescription())
+        .message(error.getMessage());
+  }
+
 //  public static String[] supportOperationTypes = new String[]{
 //      "AccountCreateContract",
 //      "TransferContract",
