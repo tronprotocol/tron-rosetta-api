@@ -151,8 +151,8 @@
    }
   ],
   "end_conditions": {
-   "create_account": 100,
-   "transfer": 10
+   "create_account": 10000,
+   "transfer": 1000
   }
  },
  "data": {
