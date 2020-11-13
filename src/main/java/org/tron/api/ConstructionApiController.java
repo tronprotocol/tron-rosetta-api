@@ -155,14 +155,14 @@ public class ConstructionApiController implements ConstructionApi {
                   .operationIdentifier(new OperationIdentifier().index(op_index))
                   .account(new AccountIdentifier().address(encode58Check(balanceContract.getOwnerAddress().toByteArray())))
                   .amount(new Amount().value(own_amount+balanceContract.getAmount()).currency(Default.CURRENCY))
-                  .type(contract.getType().toString())
-                  .status(status));
+                  .type(contract.getType().toString()));
+//                  .status(status));
               constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
                   .operationIdentifier(new OperationIdentifier().index(op_index+1))
                   .account(new AccountIdentifier().address(encode58Check(balanceContract.getToAddress().toByteArray())))
                   .amount(new Amount().value(Long.toString(balanceContract.getAmount())).currency(Default.CURRENCY))
-                  .type(contract.getType().toString())
-                  .status(status));
+                  .type(contract.getType().toString()));
+//                  .status(status));
 
               op_index += 2;
             }
