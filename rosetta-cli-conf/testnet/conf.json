@@ -171,9 +171,6 @@
   "inactive_discrepency_search_disabled": false,
   "balance_tracking_disabled": false,
   "coin_tracking_disabled": false,
-  "results_output_file": "",
-  "end_conditions": {
-   "tip": true
-  }
+  "results_output_file": ""
  }
 }
