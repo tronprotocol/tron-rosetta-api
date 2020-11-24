@@ -10,7 +10,7 @@
  "retry_elapsed_time": 600,
  "max_online_connections": 0,
  "max_sync_concurrency": 0,
- "tip_delay": 300,
+ "tip_delay": 30,
  "log_configuration": false,
  "construction": {
   "offline_url": "",
@@ -171,9 +171,6 @@
   "inactive_discrepency_search_disabled": false,
   "balance_tracking_disabled": false,
   "coin_tracking_disabled": false,
-  "results_output_file": "",
-  "end_conditions": {
-   "tip": true
-  }
+  "results_output_file": ""
  }
 }
