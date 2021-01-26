@@ -64,7 +64,6 @@ public class BlockApiController implements BlockApi {
 
   private final NativeWebRequest request;
 
-  @PostConstruct
   private void initGenesis() {
     BlockCapsule genesis = chainBaseManager.getGenesisBlock();
     BlockBalanceTraceCapsule genesisBlockBalanceTraceCapsule = new BlockBalanceTraceCapsule(genesis);

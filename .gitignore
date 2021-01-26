@@ -81,3 +81,6 @@ Wallet
 /vm_trace/
 
 result.json
+
+# idea http client
+*.http
