@@ -1,7 +1,7 @@
 {
  "openapi":"3.0.2",
  "info": {
-   "version":"1.4.10",
+   "version":"1.4.8",
    "title":"Rosetta",
    "description":"Build Once. Integrate Your Blockchain Everywhere.",
    "license": {
@@ -1056,12 +1056,6 @@
              "$ref":"#/components/schemas/Operation"
             }
           },
-         "related_transactions": {
-           "type":"array",
-           "items": {
-             "$ref":"#/components/schemas/RelatedTransaction"
-            }
-          },
          "metadata": {
            "description":"Transactions that are related to other transactions (like a cross-shard transaction) should include the tranaction_identifier of these transactions in the metadata.",
            "type":"object",
@@ -1084,7 +1078,7 @@
            "$ref":"#/components/schemas/OperationIdentifier"
           },
          "related_operations": {
-           "description":"Restrict referenced related_operations to identifier indices < the current operation_identifier.index. This ensures there exists a clear DAG-structure of relations. Since operations are one-sided, one could imagine relating operations in a single transfer or linking operations in a call tree.",
+           "description":"Restrict referenced related_operations to identifier indexes < the current operation_identifier.index. This ensures there exists a clear DAG-structure of relations. Since operations are one-sided, one could imagine relating operations in a single transfer or linking operations in a call tree.",
            "type":"array",
            "items": {
              "$ref":"#/components/schemas/OperationIdentifier"
@@ -1177,11 +1171,14 @@
         }
       },
      "SyncStatus": {
-       "description":"SyncStatus is used to provide additional context about an implementation's sync status. This object is often used by implementations to indicate healthiness when block data cannot be queried until some sync phase completes or cannot be determined by comparing the timestamp of the most recent block with the current time.",
+       "description":"SyncStatus is used to provide additional context about an implementation's sync status. It is often used to indicate that an implementation is healthy when it cannot be queried  until some sync phase occurs. If an implementation is immediately queryable, this model is often not populated.",
        "type":"object",
+       "required": [
+         "current_index"
+        ],
        "properties": {
          "current_index": {
-           "description":"CurrentIndex is the index of the last synced block in the current stage. This is a separate field from current_block_identifier in NetworkStatusResponse because blocks with indices up to and including the current_index may not yet be queryable by the caller. To reiterate, all indices up to and including current_block_identifier in NetworkStatusResponse must be queryable via the /block endpoint (excluding indices less than oldest_block_identifier).",
+           "description":"CurrentIndex is the index of the last synced block in the current stage.",
            "type":"integer",
            "format":"int64",
            "example": 100
@@ -1196,10 +1193,6 @@
            "description":"Stage is the phase of the sync process.",
            "type":"string",
            "example":"header sync"
-          },
-         "synced": {
-           "description":"sycned is a boolean that indicates if an implementation has synced up to the most recent block. If this field is not populated, the caller should rely on a traditional tip timestamp comparison to determine if an implementation is synced. This field is particularly useful for quiescent blockchains (blocks only produced when there are pending transactions). In these blockchains, the most recent block could have a timestamp far behind the current time but the node could be healthy and at tip.",
-           "type":"boolean"
           }
         }
       },
@@ -1563,33 +1556,6 @@
           }
         }
       },
-     "RelatedTransaction": {
-       "description":"The related_transaction allows implementations to link together multiple transactions. An unpopulated network identifier indicates that the related transaction is on the same network.",
-       "type":"object",
-       "required": [
-         "transaction_identifier",
-         "direction"
-        ],
-       "properties": {
-         "network_identifier": {
-           "$ref":"#/components/schemas/NetworkIdentifier"
-          },
-         "transaction_identifier": {
-           "$ref":"#/components/schemas/TransactionIdentifier"
-          },
-         "direction": {
-           "$ref":"#/components/schemas/Direction"
-          }
-        }
-      },
-     "Direction": {
-       "description":"Used by RelatedTransaction to indicate the direction of the relation (i.e. cross-shard/cross-network sends may reference `backward` to an earlier transaction and async execution may reference `forward`). Can be used to indicate if a transaction relation is from child to parent or the reverse.",
-       "type":"string",
-       "enum": [
-         "forward",
-         "backward"
-        ]
-      },
      "AccountBalanceRequest": {
        "description":"An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint. If the block_identifier is populated, a historical balance query should be performed.",
        "type":"object",
@@ -1715,7 +1681,7 @@
         }
       },
      "BlockResponse": {
-       "description":"A BlockResponse includes a fully-populated block or a partially-populated block with a list of other transactions to fetch (other_transactions). As a result of the consensus algorithm of some blockchains, blocks can be omitted (i.e. certain block indices can be skipped). If a query for one of these omitted indices is made, the response should not include a `Block` object. It is VERY important to note that blocks MUST still form a canonical, connected chain of blocks where each block has a unique index. In other words, the `PartialBlockIdentifier` of a block after an omitted block should reference the last non-omitted block.",
+       "description":"A BlockResponse includes a fully-populated block or a partially-populated block with a list of other transactions to fetch (other_transactions). As a result of the consensus algorithm of some blockchains, blocks can be omitted (i.e. certain block indexes can be skipped). If a query for one of these omitted indexes is made, the response should not include a `Block` object. It is VERY important to note that blocks MUST still form a canonical, connected chain of blocks where each block has a unique index. In other words, the `PartialBlockIdentifier` of a block after an omitted block should reference the last non-omitted block.",
        "type":"object",
        "properties": {
          "block": {
@@ -2379,30 +2345,22 @@
        "description":"SearchTransactionsResponse contains an ordered collection of BlockTransactions that match the query in SearchTransactionsRequest. These BlockTransactions are sorted from most recent block to oldest block.",
        "type":"object",
        "required": [
-         "transactions",
-         "total_count"
+         "transactions"
         ],
        "properties": {
-         "transactions": {
-           "type":"array",
-           "description":"transactions is an array of BlockTransactions sorted by most recent BlockIdentifier (meaning that transactions in recent blocks appear first). If there are many transactions for a particular search, transactions may not contain all matching transactions. It is up to the caller to paginate these transactions using the max_block field.",
-           "items": {
-             "$ref":"#/components/schemas/BlockTransaction"
-            }
-          },
-         "total_count": {
-           "description":"total_count is the number of results for a given search. Callers typically use this value to concurrently fetch results by offset or to display a virtual page number associated with results.",
-           "type":"integer",
-           "format":"int64",
-           "minimum": 0,
-           "example": 5
-          },
          "next_offset": {
            "description":"next_offset is the next offset to use when paginating through transaction results. If this field is not populated, there are no more transactions to query.",
            "type":"integer",
            "format":"int64",
            "minimum": 0,
            "example": 5
+          },
+         "transactions": {
+           "type":"array",
+           "description":"transactions is an array of BlockTransactions sorted by most recent BlockIdentifier (meaning that transactions in recent blocks appear first). If there are many transactions for a particular search, transactions may not contain all matching transactions. It is up to the caller to paginate these transactions using the max_block field.",
+           "items": {
+             "$ref":"#/components/schemas/BlockTransaction"
+            }
           }
         }
       },
