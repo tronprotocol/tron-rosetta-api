@@ -1,6 +1,8 @@
 # Compiled class file
 *.class
 
+data
+
 # Log file
 *.log
 
@@ -77,3 +79,5 @@ Wallet
 
 # vm_trace
 /vm_trace/
+
+result.json

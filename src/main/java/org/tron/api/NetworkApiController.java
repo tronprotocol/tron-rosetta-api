@@ -125,8 +125,9 @@ public class NetworkApiController implements NetworkApi {
                         .middlewareVersion(Constant.middlewareVersion)
         );
         Allow allow = new Allow();
-        allow.setHistoricalBalanceLookup(false);
-        allow.setOperationTypes(Arrays.asList(Constant.supportOperationTypes));
+        allow.setHistoricalBalanceLookup(true);
+       // allow.setHistoricalBalanceLookup(true);
+        allow.setOperationTypes(Constant.supportOperationTypes);
         allow.setOperationStatuses(Constant.supportOperationStatuses);
         allow.setErrors(Constant.supportErrors);
 
@@ -165,10 +166,10 @@ public class NetworkApiController implements NetworkApi {
                         .index(genesisBlock.getNum())
                         .hash(ByteArray.toHexString(genesisBlock.getBlockId().getBytes())));
 
-        networkStatusResponse.setOldestBlockIdentifier(
-                new BlockIdentifier()
-                        .index(currentBlock.getNum())
-                        .hash(ByteArray.toHexString(currentBlock.getBlockId().getBytes())));
+//        networkStatusResponse.setOldestBlockIdentifier(
+//                new BlockIdentifier()
+//                        .index(currentBlock.getNum())
+//                        .hash(ByteArray.toHexString(currentBlock.getBlockId().getBytes())));
 
 //        networkStatusResponse.setCurrentBlockTimestamp(new Timestamp(currentBlock.getTimeStamp()));
         networkStatusResponse.setCurrentBlockTimestamp(currentBlock.getTimeStamp());

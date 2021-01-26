@@ -2,11 +2,14 @@ package org.tron.api;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.primitives.Ints;
-import com.alibaba.fastjson.JSON;
 import com.google.protobuf.Any;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.grpc.Metadata;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
@@ -18,6 +21,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.validation.Valid;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -28,23 +32,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.tron.common.Default;
+import org.tron.common.crypto.ECKey;
 import org.tron.model.*;
 import org.tron.model.Error;
 import org.tron.protos.Protocol;
-import org.tron.protos.contract.BalanceContract.TransferContract;
-import org.tron.protos.contract.AssetIssueContractOuterClass;
 import org.tron.protos.contract.BalanceContract;
 import org.tron.common.crypto.Hash;
-import org.tron.common.parameter.CommonParameter;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.StringUtil;
-import org.tron.common.utils.ByteUtil;
 import org.tron.common.utils.Commons;
-import org.tron.common.utils.StringUtil;
-import org.tron.common.utils.WalletUtil;
-import org.tron.common.utils.Sha256Hash;
-import org.tron.common.utils.Commons;
-import org.tron.common.utils.WalletUtil;
 import org.tron.config.Constant;
 import org.tron.core.Wallet;
 import org.tron.core.capsule.BlockCapsule;
@@ -57,7 +54,6 @@ import org.tron.model.ConstructionCombineResponse;
 import org.tron.model.ConstructionDeriveRequest;
 import org.tron.model.ConstructionDeriveResponse;
 import org.tron.model.ConstructionHashRequest;
-import org.tron.model.ConstructionHashResponse;
 import org.tron.model.ConstructionMetadataRequest;
 import org.tron.model.ConstructionMetadataResponse;
 import org.tron.model.ConstructionPayloadsRequest;
@@ -65,12 +61,11 @@ import org.tron.model.ConstructionPayloadsResponse;
 import org.tron.model.ConstructionPreprocessRequest;
 import org.tron.model.ConstructionPreprocessResponse;
 import org.tron.model.ConstructionSubmitRequest;
-import org.tron.model.ConstructionSubmitResponse;
 import org.tron.model.CurveType;
-import org.tron.model.Error;
 import org.tron.model.PublicKey;
 import org.tron.model.Signature;
-import org.tron.protos.Protocol;
+
+import static org.tron.common.utils.StringUtil.encode58Check;
 
 @Controller
 @RequestMapping("${openapi.rosetta.base-path:}")
@@ -83,6 +78,8 @@ public class ConstructionApiController implements ConstructionApi {
 
   @Autowired
   private Wallet wallet;
+
+  private ObjectMapper objectMapper = new ObjectMapper();
 
 
   @org.springframework.beans.factory.annotation.Autowired
@@ -119,42 +116,71 @@ public class ConstructionApiController implements ConstructionApi {
       for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           String returnString = "";
+          ObjectMapper mapper = new ObjectMapper();
+          mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
           Error error = new Error();
 
           try {
             ConstructionParseResponse constructionParseResponse = new org.tron.model.ConstructionParseResponse();
 
-            NetworkIdentifier networkIdentifier = constructionParseRequest.getNetworkIdentifier();
             Boolean signed = constructionParseRequest.getSigned();
-            String tronTx = constructionParseRequest.getTransaction();
+            TransactionCapsule transaction = new TransactionCapsule(
+                ByteArray.fromHexString(constructionParseRequest.getTransaction()));
 
-            Protocol.Transaction transaction = Protocol.Transaction.parseFrom(tronTx.getBytes());
-            if (signed) {
-              java.util.List<org.tron.protos.Protocol.Transaction.Contract> contracts = transaction.getRawData().getContractList();
-              for (org.tron.protos.Protocol.Transaction.Contract contract : contracts) {
-                Any contractParameter = contract.getParameter();
-                if (org.tron.protos.Protocol.Transaction.Contract.ContractType.TransferContract == contract.getType()) {
-                  String from = contractParameter.unpack(BalanceContract.TransferContract.class).getOwnerAddress().toString();
-                  constructionParseResponse.addSignersItem(from);
-                }
+//            String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
+            String status = "";
+            if (0 != transaction.getInstance().getRetCount()) {
+              status = transaction.getInstance().getRet(0).getContractRet().name();
+            }
+            java.util.List<org.tron.protos.Protocol.Transaction.Contract> contracts =
+                transaction.getInstance().getRawData().getContractList();
+
+            long op_index = 0;
+            for (org.tron.protos.Protocol.Transaction.Contract contract : contracts) {
+              if (org.tron.protos.Protocol.Transaction.Contract.ContractType.TransferContract != contract.getType()) {
+                continue;
               }
+              BalanceContract.TransferContract balanceContract =
+                  contract.getParameter().unpack(BalanceContract.TransferContract.class);
+
+              //1. get signers
+              if (signed) {
+                String from = encode58Check(balanceContract.getOwnerAddress().toByteArray());
+                constructionParseResponse.addSignersItem(from);
+              }
+
+              //2. get ops
+              String own_amount = balanceContract.getAmount() == 0 ? "" : "-";
+              constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
+                  .operationIdentifier(new OperationIdentifier().index(op_index))
+                  .account(new AccountIdentifier().address(encode58Check(balanceContract.getOwnerAddress().toByteArray())))
+                  .amount(new Amount().value(own_amount+balanceContract.getAmount()).currency(Default.CURRENCY))
+                  .type(contract.getType().toString()));
+//                  .status(status));
+              constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
+                  .operationIdentifier(new OperationIdentifier().index(op_index+1))
+                  .account(new AccountIdentifier().address(encode58Check(balanceContract.getToAddress().toByteArray())))
+                  .amount(new Amount().value(Long.toString(balanceContract.getAmount())).currency(Default.CURRENCY))
+                  .type(contract.getType().toString()));
+//                  .status(status));
+
+              op_index += 2;
             }
 
-            String status = "0";
-            if (0 != transaction.getRetCount()) {
-              status = transaction.getRet(0).getContractRet().toString();
-            }
+            //3. get metadata
+            Map<String, Object> metadatas = new HashMap<>();
+            metadatas.put("reference_block_num", transaction.getInstance().getRawData().getRefBlockNum());
+            metadatas.put("reference_block_hash", ByteArray.toHexString(transaction.getInstance().getRawData().getRefBlockHash().toByteArray()));
+            metadatas.put("expiration", transaction.getExpiration());
+            metadatas.put("timestamp", transaction.getTimestamp());
+            JSONObject metadata = new JSONObject(metadatas);
+            constructionParseResponse.setMetadata(metadata);
 
-            constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
-                .operationIdentifier(new OperationIdentifier().index((long) 1))
-                .type(transaction.getRawData().getContract(0).getType().toString())
-                .status(status));
-
-            returnString = JSON.toJSONString(constructionParseResponse);
-          } catch (java.lang.Error | InvalidProtocolBufferException e) {
+            returnString = mapper.writeValueAsString(constructionParseResponse);
+          } catch (java.lang.Error | InvalidProtocolBufferException | JsonProcessingException | BadItemException e) {
             e.printStackTrace();
             statusCode.set(500);
-            error = Constant.INVALID_TRANSACTION_FORMAT;
+            error = Constant.newError(Constant.INVALID_TRANSACTION_FORMAT);
             returnString = JSON.toJSONString(error);
           }
 
@@ -194,7 +220,8 @@ public class ConstructionApiController implements ConstructionApi {
           PublicKey publicKey = constructionDeriveRequest.getPublicKey();
           if (CurveType.SECP256K1.equals(publicKey.getCurveType())) {
             String hexBytes = publicKey.getHexBytes();
-            byte[] address = Hash.computeAddress(ByteArray.fromHexString(hexBytes));
+            ECKey ecKey = new ECKey(ByteArray.fromHexString(hexBytes), false);
+            byte[] address = ecKey.getAddress();
             ConstructionDeriveResponse response = new ConstructionDeriveResponse();
             response.address(StringUtil.encode58Check(address));
             return new ResponseEntity<>(response, HttpStatus.OK);
@@ -226,7 +253,7 @@ public class ConstructionApiController implements ConstructionApi {
     getRequest().ifPresent(request -> {
       for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
-          String exampleString = "{ \"options\" : \"{}\" }";
+          String exampleString = "{ \"options\" : {} }";
           ApiUtil.setExampleResponse(request, "application/json", exampleString);
           break;
         }
@@ -260,7 +287,7 @@ public class ConstructionApiController implements ConstructionApi {
     getRequest().ifPresent(request -> {
       for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
-          String returnString;
+          String returnString = "";
           //BalanceContract.TransferContract transferContract = BalanceContract.TransferContract.newBuilder().setAmount(10)
           //        .setOwnerAddress(ByteString.copyFrom(ByteArray.fromHexString("121212a9cf")))
           //        .setToAddress(ByteString.copyFrom(ByteArray.fromHexString("232323a9cf"))).build();
@@ -286,12 +313,16 @@ public class ConstructionApiController implements ConstructionApi {
             }
             ConstructionCombineResponse constructionCombineResponse = new ConstructionCombineResponse();
             constructionCombineResponse.setSignedTransaction(ByteArray.toHexString(transactionBuilder.build().toByteArray()));
-            returnString = JSON.toJSONString(constructionCombineResponse);
-          } catch (BadItemException e) {
+            returnString = objectMapper.writeValueAsString(constructionCombineResponse);
+          } catch (BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            Error error = Constant.INVALID_TRANSACTION_FORMAT;
-            returnString = JSON.toJSONString(error);
+            Error error = Constant.newError(Constant.INVALID_TRANSACTION_FORMAT);
+            try {
+              returnString = objectMapper.writeValueAsString(error);
+            } catch (JsonProcessingException ex) {
+              //ex.printStackTrace();
+            }
           }
 
           ApiUtil.setExampleResponse(request, "application/json", returnString);
@@ -324,12 +355,9 @@ public class ConstructionApiController implements ConstructionApi {
       if (getRequest().isPresent()) {
         for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
           if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
-            String exampleString = "{ \"metadata\" : { \"account_sequence\" : 23, \"recent_block_hash\" : \"0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5\" } }";
-            ApiUtil.setExampleResponse(request, "application/json", exampleString);
             BlockCapsule.BlockId blockId = new BlockCapsule.BlockId(dynamicPropertiesStore.getLatestBlockHeaderHash());
-            byte[] referenceBlockNumBytes = ByteArray.subArray(ByteArray.fromLong(blockId.getNum()), 6, 8);
-            int referenceBlockNum = Ints.fromBytes((byte) 0, (byte) 0, referenceBlockNumBytes[0], referenceBlockNumBytes[1]);
-            String referenceBlockHash = ByteArray.toHexString(ByteArray.subArray(blockId.getBytes(), 8, 16));
+            long referenceBlockNum = blockId.getNum();
+            String referenceBlockHash = blockId.toString();
             long expiration = dynamicPropertiesStore.getLatestBlockHeaderTimestamp() + Args.getInstance()
                 .getTrxExpirationTimeInMilliseconds();
             long timestamp = System.currentTimeMillis();
@@ -339,9 +367,8 @@ public class ConstructionApiController implements ConstructionApi {
             metadatas.put("reference_block_hash", referenceBlockHash);
             metadatas.put("expiration", expiration);
             metadatas.put("timestamp", timestamp);
-            JSONObject jsonObject = new JSONObject(metadatas);
             ConstructionMetadataResponse response = new ConstructionMetadataResponse();
-            response.setMetadata(jsonObject.toString());
+            response.setMetadata(metadatas);
 
             return new ResponseEntity<>(response, HttpStatus.OK);
           }
@@ -359,15 +386,15 @@ public class ConstructionApiController implements ConstructionApi {
    * @return Expected response to a valid request (status code 200)
    * or unexpected error (status code 200)
    */
-  @ApiOperation(value = "Get the Hash of a Signed Transaction", nickname = "constructionHash", notes = "TransactionHash returns the network-specific transaction hash for a signed transaction.", response = ConstructionHashResponse.class, tags = {"Construction",})
+  @ApiOperation(value = "Get the Hash of a Signed Transaction", nickname = "constructionHash", notes = "TransactionHash returns the network-specific transaction hash for a signed transaction.", response = TransactionIdentifierResponse.class, tags = {"Construction",})
   @ApiResponses(value = {
-          @ApiResponse(code = 200, message = "Expected response to a valid request", response = ConstructionHashResponse.class),
+          @ApiResponse(code = 200, message = "Expected response to a valid request", response = TransactionIdentifierResponse.class),
           @ApiResponse(code = 200, message = "unexpected error", response = Error.class)})
   @RequestMapping(value = "/construction/hash",
           produces = {"application/json"},
           consumes = {"application/json"},
           method = RequestMethod.POST)
-  public ResponseEntity<ConstructionHashResponse> constructionHash(@ApiParam(value = "", required = true) @Valid @RequestBody ConstructionHashRequest constructionHashRequest) {
+  public ResponseEntity<TransactionIdentifierResponse> constructionHash(@ApiParam(value = "", required = true) @Valid @RequestBody ConstructionHashRequest constructionHashRequest) {
     AtomicInteger statusCode = new AtomicInteger(HttpStatus.OK.value());
     getRequest().ifPresent(request -> {
       for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
@@ -377,14 +404,18 @@ public class ConstructionApiController implements ConstructionApi {
             TransactionCapsule transaction = new TransactionCapsule(
                     ByteArray.fromHexString(constructionHashRequest.getSignedTransaction()));
             String transactionHash = transaction.getTransactionId().toString();
-            ConstructionHashResponse constructionHashResponse = new ConstructionHashResponse();
-            constructionHashResponse.setTransactionHash(transactionHash);
-            returnString = JSON.toJSONString(constructionHashResponse);
-          } catch (BadItemException e) {
+            TransactionIdentifierResponse transactionIdentifierResponse = new TransactionIdentifierResponse();
+            transactionIdentifierResponse.setTransactionIdentifier(new TransactionIdentifier().hash(transactionHash));
+            returnString = objectMapper.writeValueAsString(transactionIdentifierResponse);
+          } catch (BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            Error error = Constant.INVALID_TRANSACTION_FORMAT;
-            returnString = JSON.toJSONString(error);
+            Error error = Constant.newError(Constant.INVALID_TRANSACTION_FORMAT);
+            try {
+              returnString = objectMapper.writeValueAsString(error);
+            } catch (JsonProcessingException ex) {
+              //ex.printStackTrace();
+            }
           }
 
           ApiUtil.setExampleResponse(request, "application/json", returnString);
@@ -409,16 +440,16 @@ public class ConstructionApiController implements ConstructionApi {
    * @return Expected response to a valid request (status code 200)
    * or unexpected error (status code 200)
    */
-  @ApiOperation(value = "Submit a Signed Transaction", nickname = "constructionSubmit", notes = "Submit a pre-signed transaction to the node. This call should not block on the transaction being included in a block. Rather, it should return immediately with an indication of whether or not the transaction was included in the mempool. The transaction submission response should only return a 200 status if the submitted transaction could be included in the mempool. Otherwise, it should return an error.", response = ConstructionSubmitResponse.class, tags = {"Construction",})
+  @ApiOperation(value = "Submit a Signed Transaction", nickname = "constructionSubmit", notes = "Submit a pre-signed transaction to the node. This call should not block on the transaction being included in a block. Rather, it should return immediately with an indication of whether or not the transaction was included in the mempool. The transaction submission response should only return a 200 status if the submitted transaction could be included in the mempool. Otherwise, it should return an error.", response = TransactionIdentifierResponse.class, tags = {"Construction",})
   @ApiResponses(value = {
           @ApiResponse(code = 200, message = "Expected response to a valid request",
-                  response = ConstructionSubmitResponse.class),
+                  response = TransactionIdentifierResponse.class),
           @ApiResponse(code = 200, message = "unexpected error", response = Error.class)})
   @RequestMapping(value = "/construction/submit",
           produces = {"application/json"},
           consumes = {"application/json"},
           method = RequestMethod.POST)
-  public ResponseEntity<ConstructionSubmitResponse> constructionSubmit(
+  public ResponseEntity<TransactionIdentifierResponse> constructionSubmit(
           @ApiParam(value = "", required = true) @Valid @RequestBody ConstructionSubmitRequest constructionSubmitRequest) {
     AtomicInteger statusCode = new AtomicInteger(HttpStatus.OK.value());
 
@@ -426,28 +457,33 @@ public class ConstructionApiController implements ConstructionApi {
       for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           String returnString = "";
-          Error error = new Error();
+          Error error = null;
           try {
             TransactionCapsule transactionSigned = new TransactionCapsule(
                     ByteArray.fromHexString(constructionSubmitRequest.getSignedTransaction()));
             GrpcAPI.Return result = wallet.broadcastTransaction(transactionSigned.getInstance());
             if (result.getResult()) {
               String transactionHash = transactionSigned.getTransactionId().toString();
-              ConstructionSubmitResponse constructionSubmitResponse = new ConstructionSubmitResponse();
-              constructionSubmitResponse.getTransactionIdentifier().setHash(transactionHash);
-              returnString = JSON.toJSONString(constructionSubmitResponse);
+              TransactionIdentifierResponse transactionIdentifierResponse = new TransactionIdentifierResponse();
+              TransactionIdentifier transactionIdentifier = new TransactionIdentifier();
+              transactionIdentifier.setHash(transactionHash);
+              transactionIdentifierResponse.setTransactionIdentifier(transactionIdentifier);
+              returnString = objectMapper.writeValueAsString(transactionIdentifierResponse);
             } else {
               statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-              error.setCode(result.getCodeValue());
-              error.setMessage(result.getMessage().toStringUtf8());
-              error.setRetriable(true);
-              returnString = JSON.toJSONString(error);
+              error = Constant.newError(Constant.BROADCAST_TRANSACTION_FAILED);
+              error.details(result.getCodeValue()).message(result.getMessage().toStringUtf8());
+              returnString = objectMapper.writeValueAsString(error);
             }
-          } catch (BadItemException e) {
+          } catch (BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            error = Constant.INVALID_TRANSACTION_FORMAT;
-            returnString = JSON.toJSONString(error);
+            error = Constant.newError(Constant.INVALID_TRANSACTION_FORMAT);
+            try {
+              returnString = objectMapper.writeValueAsString(error);
+            } catch (JsonProcessingException ex) {
+              //ex.printStackTrace();
+            }
           }
 
           ApiUtil.setExampleResponse(request, "application/json", returnString);
@@ -483,14 +519,15 @@ public class ConstructionApiController implements ConstructionApi {
       for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           validatePayloadsRequest(constructionPayloadsRequest);
-          Pair<String, Protocol.Transaction> pair = buildTransaction(constructionPayloadsRequest);
-          Protocol.Transaction transaction = pair.getRight();
+          Pair<String, TransactionCapsule> pair = buildTransaction(constructionPayloadsRequest);
+          TransactionCapsule transaction = pair.getRight();
           String owner = pair.getLeft();
           SigningPayload payloadItem = new SigningPayload();
           payloadItem.address(owner)
-              .hexBytes(ByteArray.toHexString(transaction.getRawData().toByteArray()));
+              .hexBytes(ByteArray.toHexString(transaction.getTransactionId().getBytes()))
+              .signatureType(SignatureType.ECDSA_RECOVERY);
           ConstructionPayloadsResponse response = new ConstructionPayloadsResponse();
-          response.unsignedTransaction(ByteArray.toHexString(transaction.toByteArray()))
+          response.unsignedTransaction(ByteArray.toHexString(transaction.getInstance().toByteArray()))
               .addPayloadsItem(payloadItem);
           return new ResponseEntity<>(response, HttpStatus.OK);
         }
@@ -504,15 +541,16 @@ public class ConstructionApiController implements ConstructionApi {
 
   }
 
-  public Pair<String, Protocol.Transaction> buildTransaction(ConstructionPayloadsRequest constructionPayloadsRequest) {
+  public Pair<String, TransactionCapsule> buildTransaction(ConstructionPayloadsRequest constructionPayloadsRequest) {
     List<Operation> operations = constructionPayloadsRequest.getOperations();
     Operation from, to;
-    if (!CollectionUtils.isEmpty(operations.get(0).getRelatedOperations())) {
-      from = operations.get(1);
-      to = operations.get(0);
-    } else {
+    if (StringUtils.isNotEmpty(operations.get(0).getAmount().getValue())
+        && operations.get(0).getAmount().getValue().startsWith("-")) {
       from = operations.get(0);
       to = operations.get(1);
+    } else {
+      from = operations.get(1);
+      to = operations.get(0);
 
     }
     BalanceContract.TransferContract.Builder builder = BalanceContract.TransferContract
@@ -525,12 +563,12 @@ public class ConstructionApiController implements ConstructionApi {
     ByteString bsTo = ByteString.copyFrom(Commons.decodeFromBase58Check(dest));
     builder.setToAddress(bsTo);
 
-    builder.setAmount(Long.parseLong(from.getAmount().getValue()));
+    builder.setAmount(Long.parseLong(to.getAmount().getValue()));
     BalanceContract.TransferContract contract = builder.build();
     TransactionCapsule transactionCapsule = new TransactionCapsule(contract,
         Protocol.Transaction.Contract.ContractType.TransferContract);
 
-    JSONObject metadata = JSON.parseObject((String) constructionPayloadsRequest.getMetadata());
+    JSONObject metadata = new JSONObject((Map<String, Object>) constructionPayloadsRequest.getMetadata());
 
     String referenceBlockHash = metadata.getString("reference_block_hash");
     int referenceBlockNum = metadata.getIntValue("reference_block_num");
@@ -541,7 +579,7 @@ public class ConstructionApiController implements ConstructionApi {
 
     long timestamp = metadata.getLongValue("timestamp");
     transactionCapsule.setTimestamp(timestamp);
-    return Pair.of(src, transactionCapsule.getInstance());
+    return Pair.of(src, transactionCapsule);
   }
 
 }
