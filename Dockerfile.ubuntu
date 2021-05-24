@@ -1,4 +1,4 @@
-FROM tronprotocol/centos7-jdk8
+FROM tronprotocol/ubuntu18-jdk8
 
 ENV BASE_DIR="/FullNode"
 ENV JAR_NAME="tron-rosetta-api-1.0.0.jar"
@@ -16,8 +16,9 @@ ENV JVM_OPTIONS="-Xms$XMS -Xmx$XMX -XX:NewRatio=7 \
 
 ENV TRON_OPTIONS=""
 
-#ADD . /tron-rosetta-api
-RUN git clone https://github.com/tronprotocol/tron-rosetta-api.git /tron-rosetta-api \
+RUN apt-get update \
+    && apt-get install -y git python-virtualenv \
+    && git clone https://github.com/tronprotocol/tron-rosetta-api.git /tron-rosetta-api \
     && set -o errexit -o nounset \
     && mkdir -p $BASE_DIR $DATA_DIR $LOG_DIR \
     && cd $BASE_DIR \

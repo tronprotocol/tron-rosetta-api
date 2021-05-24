@@ -18,12 +18,22 @@ $ cd tron-rosetta-api
 $ docker build -t tron-rosetta-api .
 ```
 
+Compile a docker image from ubuntu:
+```
+$ cd tron-rosetta-api
+$ docker build -f Dockerfile.ubuntu -t tron-rosetta-api .
+```
 
 ## Node Deployment
 
 Start in Docker
 ```
 $ docker run --name tron-rosetta-api -d -p 8080:8080 tron-rosetta-api:latest
+```
+
+Start the node offline
+```
+$ docker run --name tron-rosetta-api -d --env RUN_MODE="offline" -p 8080:8080 tron-rosetta-api:latest
 ```
 
 You can also customize a data or log directory
