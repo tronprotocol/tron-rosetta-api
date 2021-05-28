@@ -27,6 +27,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import java.util.Optional;
 import org.tron.common.overlay.server.Channel;
 import org.tron.common.overlay.server.ChannelManager;
+import org.tron.common.parameter.CommonParameter;
 import org.tron.common.utils.ByteArray;
 import org.tron.config.Constant;
 import org.tron.core.ChainBaseManager;
@@ -89,7 +90,11 @@ public class NetworkApiController implements NetworkApi {
                 if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
                     NetworkIdentifier networkIdentifier = new NetworkIdentifier();
                     networkIdentifier.setBlockchain("tron");
-                    networkIdentifier.setNetwork("mainnet");
+                    if (CommonParameter.getInstance().getNodeP2pVersion() == 11111) {
+                        networkIdentifier.setNetwork("mainnet");
+                    } else {
+                        networkIdentifier.setNetwork("testnet");
+                    }
                     networkListResponse.addNetworkIdentifiersItem(networkIdentifier);
                     break;
                 }
