@@ -25,6 +25,7 @@ RUN git clone https://github.com/tronprotocol/tron-rosetta-api.git /tron-rosetta
     && ln -s $DATA_DIR data \
     && cd /tron-rosetta-api \
     && ./gradlew build -xtest -xcheck --refresh-dependencies \
+    && cp docker-entrypoint.sh $BASE_DIR \
     && mkdir -p $BASE_DIR/conf \
     && cp -r src/main/resources/net_conf/* $BASE_DIR/conf \
     && cd build/libs \
@@ -33,8 +34,6 @@ RUN git clone https://github.com/tronprotocol/tron-rosetta-api.git /tron-rosetta
     && rm -rf /tron-rosetta-api
 
 WORKDIR $BASE_DIR
-
-COPY docker-entrypoint.sh $BASE_DIR
 
 EXPOSE 8080
 
