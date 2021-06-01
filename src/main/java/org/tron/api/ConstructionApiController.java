@@ -104,7 +104,7 @@ public class ConstructionApiController implements ConstructionApi {
   @ApiOperation(value = "Parse a Transaction", nickname = "constructionParse", notes = "Parse is called on both unsigned and signed transactions to understand the intent of the formulated transaction. This is run as a sanity check before signing (after `/construction/payloads`) and before broadcast (after `/construction/combine`). ", response = ConstructionParseResponse.class, tags = {"Construction",})
   @ApiResponses(value = {
       @ApiResponse(code = 200, message = "Expected response to a valid request", response = ConstructionParseResponse.class),
-      @ApiResponse(code = 200, message = "unexpected error", response = Error.class)})
+      @ApiResponse(code = 500, message = "unexpected error", response = Error.class)})
   @RequestMapping(value = "/construction/parse",
       produces = {"application/json"},
       consumes = {"application/json"},
@@ -203,7 +203,7 @@ public class ConstructionApiController implements ConstructionApi {
   @ApiOperation(value = "Derive an Address from a PublicKey", nickname = "constructionDerive", notes = "Derive returns the network-specific address associated with a public key. Blockchains that require an on-chain action to create an account should not implement this method.", response = ConstructionDeriveResponse.class, tags = {"Construction",})
   @ApiResponses(value = {
       @ApiResponse(code = 200, message = "Expected response to a valid request", response = ConstructionDeriveResponse.class),
-      @ApiResponse(code = 200, message = "unexpected error", response = Error.class)})
+      @ApiResponse(code = 500, message = "unexpected error", response = Error.class)})
   @RequestMapping(value = "/construction/derive",
       produces = {"application/json"},
       consumes = {"application/json"},
@@ -244,7 +244,7 @@ public class ConstructionApiController implements ConstructionApi {
   @ApiOperation(value = "Create a Request to Fetch Metadata", nickname = "constructionPreprocess", notes = "Preprocess is called prior to `/construction/payloads` to construct a request for any metadata that is needed for transaction construction given (i.e. account nonce). The request returned from this method will be used by the caller (in a different execution environment) to call the `/construction/metadata` endpoint.", response = ConstructionPreprocessResponse.class, tags = {"Construction",})
   @ApiResponses(value = {
       @ApiResponse(code = 200, message = "Expected response to a valid request", response = ConstructionPreprocessResponse.class),
-      @ApiResponse(code = 200, message = "unexpected error", response = Error.class)})
+      @ApiResponse(code = 500, message = "unexpected error", response = Error.class)})
   @RequestMapping(value = "/construction/preprocess",
       produces = {"application/json"},
       consumes = {"application/json"},
@@ -277,7 +277,7 @@ public class ConstructionApiController implements ConstructionApi {
   @ApiOperation(value = "Create Network Transaction from Signatures", nickname = "constructionCombine", notes = "Combine creates a network-specific transaction from an unsigned transaction and an array of provided signatures. The signed transaction returned from this method will be sent to the `/construction/submit` endpoint by the caller.", response = ConstructionCombineResponse.class, tags = {"Construction",})
   @ApiResponses(value = {
       @ApiResponse(code = 200, message = "Expected response to a valid request", response = ConstructionCombineResponse.class),
-      @ApiResponse(code = 200, message = "unexpected error", response = Error.class)})
+      @ApiResponse(code = 500, message = "unexpected error", response = Error.class)})
   @RequestMapping(value = "/construction/combine",
       produces = {"application/json"},
       consumes = {"application/json"},
@@ -344,7 +344,7 @@ public class ConstructionApiController implements ConstructionApi {
     @ApiOperation(value = "Get Metadata for Transaction Construction", nickname = "constructionMetadata", notes = "Get any information required to construct a transaction for a specific network. Metadata returned here could be a recent hash to use, an account sequence number, or even arbitrary chain state. The request used when calling this endpoint is often created by calling `/construction/preprocess` in an offline environment. It is important to clarify that this endpoint should not pre-construct any transactions for the client (this should happen in `/construction/payloads`). This endpoint is left purposely unstructured because of the wide scope of metadata that could be required.", response = ConstructionMetadataResponse.class, tags = {"Construction",})
     @ApiResponses(value = {
         @ApiResponse(code = 200, message = "Expected response to a valid request", response = ConstructionMetadataResponse.class),
-        @ApiResponse(code = 200, message = "unexpected error", response = Error.class)})
+        @ApiResponse(code = 500, message = "unexpected error", response = Error.class)})
     @RequestMapping(value = "/construction/metadata",
         produces = {"application/json"},
         consumes = {"application/json"},
@@ -369,6 +369,7 @@ public class ConstructionApiController implements ConstructionApi {
             metadatas.put("timestamp", timestamp);
             ConstructionMetadataResponse response = new ConstructionMetadataResponse();
             response.setMetadata(metadatas);
+            response.addSuggestedFeeItem(new Amount().value("37800").currency(Default.CURRENCY));
 
             return new ResponseEntity<>(response, HttpStatus.OK);
           }
@@ -389,7 +390,7 @@ public class ConstructionApiController implements ConstructionApi {
   @ApiOperation(value = "Get the Hash of a Signed Transaction", nickname = "constructionHash", notes = "TransactionHash returns the network-specific transaction hash for a signed transaction.", response = TransactionIdentifierResponse.class, tags = {"Construction",})
   @ApiResponses(value = {
           @ApiResponse(code = 200, message = "Expected response to a valid request", response = TransactionIdentifierResponse.class),
-          @ApiResponse(code = 200, message = "unexpected error", response = Error.class)})
+          @ApiResponse(code = 500, message = "unexpected error", response = Error.class)})
   @RequestMapping(value = "/construction/hash",
           produces = {"application/json"},
           consumes = {"application/json"},
@@ -444,7 +445,7 @@ public class ConstructionApiController implements ConstructionApi {
   @ApiResponses(value = {
           @ApiResponse(code = 200, message = "Expected response to a valid request",
                   response = TransactionIdentifierResponse.class),
-          @ApiResponse(code = 200, message = "unexpected error", response = Error.class)})
+          @ApiResponse(code = 500, message = "unexpected error", response = Error.class)})
   @RequestMapping(value = "/construction/submit",
           produces = {"application/json"},
           consumes = {"application/json"},
@@ -506,7 +507,7 @@ public class ConstructionApiController implements ConstructionApi {
   @ApiOperation(value = "Generate an Unsigned Transaction and Signing Payloads", nickname = "constructionPayloads", notes = "Payloads is called with an array of operations and the response from `/construction/metadata`. It returns an unsigned transaction blob and a collection of payloads that must be signed by particular addresses using a certain SignatureType. The array of operations provided in transaction construction often times can not specify all \"effects\" of a transaction (consider invoked transactions in Ethereum). However, they can deterministically specify the \"intent\" of the transaction, which is sufficient for construction. For this reason, parsing the corresponding transaction in the Data API (when it lands on chain) will contain a superset of whatever operations were provided during construction.", response = ConstructionPayloadsResponse.class, tags={ "Construction", })
   @ApiResponses(value = {
       @ApiResponse(code = 200, message = "Expected response to a valid request", response = ConstructionPayloadsResponse.class),
-      @ApiResponse(code = 200, message = "unexpected error", response = Error.class) })
+      @ApiResponse(code = 500, message = "unexpected error", response = Error.class) })
   @RequestMapping(value = "/construction/payloads",
       produces = { "application/json" },
       consumes = { "application/json" },

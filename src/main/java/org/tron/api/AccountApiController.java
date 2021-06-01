@@ -95,7 +95,7 @@ public class AccountApiController implements AccountApi {
       "Account",})
   @ApiResponses(value = {
       @ApiResponse(code = 200, message = "Expected response to a valid request", response = AccountBalanceResponse.class),
-      @ApiResponse(code = 200, message = "unexpected error", response = Error.class)})
+      @ApiResponse(code = 500, message = "unexpected error", response = Error.class)})
   @RequestMapping(value = "/account/balance",
       produces = {"application/json"},
       consumes = {"application/json"},
@@ -125,7 +125,12 @@ public class AccountApiController implements AccountApi {
           } catch (AccountException e) {
             Error error = Constant.newError(Constant.ACCOUNT_IS_NOT_EXISTS)
                 .retriable(false)
-                .details(partialBlockIdentifier);
+                .details(accountBalanceRequest.getAccountIdentifier());
+            return ApiUtil.sendError(request, JSON.toJSONString(error));
+          } catch (IllegalArgumentException e) {
+            Error error = Constant.newError(Constant.ACCOUNT_IS_NOT_EXISTS)
+                .retriable(false)
+                .details(accountBalanceRequest.getAccountIdentifier());
             return ApiUtil.sendError(request, JSON.toJSONString(error));
           }
           HttpHeaders headers = new HttpHeaders();
