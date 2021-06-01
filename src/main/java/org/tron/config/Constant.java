@@ -34,6 +34,10 @@ public class Constant {
   public static OperationStatus OPERATION_TRANSFER_FAILED = new OperationStatus().status(contractResult.TRANSFER_FAILED.name()).successful(true);
 
   // errors
+  public static Error INVALID_REQUEST_FORMAT =
+      new Error().code(10).message("Invalid request field").retriable(false).details(null);
+  public static Error INTERNAL_SERVER_ERROR =
+      new Error().code(11).message("Internal Server Error").retriable(false).details(null);
   public static Error INVALID_ACCOUNT_FORMAT =
       new Error().code(12).message("Invalid account format").retriable(true).details(null);
   public static Error INVALID_TRANSACTION_FORMAT =

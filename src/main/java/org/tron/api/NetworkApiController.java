@@ -78,7 +78,7 @@ public class NetworkApiController implements NetworkApi {
     @ApiOperation(value = "Get List of Available Networks", nickname = "networkList", notes = "This endpoint returns a list of NetworkIdentifiers that the Rosetta server supports.", response = NetworkListResponse.class, tags={ "Network", })
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Expected response to a valid request", response = NetworkListResponse.class),
-            @ApiResponse(code = 200, message = "unexpected error", response = Error.class) })
+            @ApiResponse(code = 500, message = "unexpected error", response = Error.class) })
     @RequestMapping(value = "/network/list",
             produces = { "application/json" },
             consumes = { "application/json" },
@@ -115,7 +115,7 @@ public class NetworkApiController implements NetworkApi {
     @ApiOperation(value = "Get Network Options", nickname = "networkOptions", notes = "This endpoint returns the version information and allowed network-specific types for a NetworkIdentifier. Any NetworkIdentifier returned by /network/list should be accessible here. Because options are retrievable in the context of a NetworkIdentifier, it is possible to define unique options for each network.", response = NetworkOptionsResponse.class, tags={ "Network", })
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Expected response to a valid request", response = NetworkOptionsResponse.class),
-            @ApiResponse(code = 200, message = "unexpected error", response = Error.class) })
+            @ApiResponse(code = 500, message = "unexpected error", response = Error.class) })
     @RequestMapping(value = "/network/options",
             produces = { "application/json" },
             consumes = { "application/json" },
@@ -152,7 +152,7 @@ public class NetworkApiController implements NetworkApi {
     @ApiOperation(value = "Get Network Status", nickname = "networkStatus", notes = "This endpoint returns the current status of the network requested. Any NetworkIdentifier returned by /network/list should be accessible here.", response = NetworkStatusResponse.class, tags={ "Network", })
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Expected response to a valid request", response = NetworkStatusResponse.class),
-            @ApiResponse(code = 200, message = "unexpected error", response = Error.class) })
+            @ApiResponse(code = 500, message = "unexpected error", response = Error.class) })
     @RequestMapping(value = "/network/status",
             produces = { "application/json" },
             consumes = { "application/json" },
