@@ -250,16 +250,26 @@ public class ConstructionApiController implements ConstructionApi {
       consumes = {"application/json"},
       method = RequestMethod.POST)
   public ResponseEntity<ConstructionPreprocessResponse> constructionPreprocess(@ApiParam(value = "", required = true) @Valid @RequestBody ConstructionPreprocessRequest constructionPreprocessRequest) {
-    getRequest().ifPresent(request -> {
-      for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
+    if (getRequest().isPresent()) {
+      for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
-          String exampleString = "{ \"options\" : {} }";
-          ApiUtil.setExampleResponse(request, "application/json", exampleString);
-          break;
+          validatePreprocessRequest(constructionPreprocessRequest);
+          Pair<String, TransactionCapsule> pair = buildTransaction(constructionPreprocessRequest.getOperations(),constructionPreprocessRequest.getMetadata());
+          TransactionCapsule transaction = pair.getRight();
+          ConstructionPreprocessResponse response = new ConstructionPreprocessResponse();
+          Map<String, Object> options = new HashMap<>();
+          Protocol.Transaction.Builder transactionWithSig = transaction.getInstance().toBuilder().
+              addSignature(ByteString.copyFrom(ByteArray.fromHexString("e0c493d50a193afdf44a5aaf65d06e7e13da22deb68ff665f223efa1ace357c114fff45a24330d6fda1a39aad9152237e610b108a4c781ce59c342c1e89f9b9801")));
+          options.put("size", transactionWithSig.build().getSerializedSize());
+          response.options(options);
+          return new ResponseEntity<>(response, HttpStatus.OK);
         }
       }
-    });
+    }
     return new ResponseEntity<>(HttpStatus.valueOf(200));
+  }
+
+  public void validatePreprocessRequest(ConstructionPreprocessRequest constructionPreprocessRequest) {
 
   }
 
@@ -369,7 +379,14 @@ public class ConstructionApiController implements ConstructionApi {
             metadatas.put("timestamp", timestamp);
             ConstructionMetadataResponse response = new ConstructionMetadataResponse();
             response.setMetadata(metadatas);
-            response.addSuggestedFeeItem(new Amount().value("37800").currency(Default.CURRENCY));
+            if (constructionMetadataRequest.getOptions() != null) {
+              JSONObject metadata = new JSONObject((Map<String, Object>) constructionMetadataRequest.getOptions());
+              int bytesSize = metadata.getIntValue("size");
+              if (dynamicPropertiesStore.supportVM()) {
+                bytesSize += org.tron.core.Constant.MAX_RESULT_SIZE_IN_TX;
+              }
+              response.addSuggestedFeeItem(new Amount().value(Integer.toString(bytesSize)).currency(Default.CURRENCY));
+            }
 
             return new ResponseEntity<>(response, HttpStatus.OK);
           }
@@ -520,7 +537,7 @@ public class ConstructionApiController implements ConstructionApi {
       for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           validatePayloadsRequest(constructionPayloadsRequest);
-          Pair<String, TransactionCapsule> pair = buildTransaction(constructionPayloadsRequest);
+          Pair<String, TransactionCapsule> pair = buildTransaction(constructionPayloadsRequest.getOperations(),constructionPayloadsRequest.getMetadata());
           TransactionCapsule transaction = pair.getRight();
           String owner = pair.getLeft();
           SigningPayload payloadItem = new SigningPayload();
@@ -542,8 +559,7 @@ public class ConstructionApiController implements ConstructionApi {
 
   }
 
-  public Pair<String, TransactionCapsule> buildTransaction(ConstructionPayloadsRequest constructionPayloadsRequest) {
-    List<Operation> operations = constructionPayloadsRequest.getOperations();
+  public Pair<String, TransactionCapsule> buildTransaction(List<Operation> operations, Object metaObj) {
     Operation from, to;
     if (StringUtils.isNotEmpty(operations.get(0).getAmount().getValue())
         && operations.get(0).getAmount().getValue().startsWith("-")) {
@@ -569,7 +585,7 @@ public class ConstructionApiController implements ConstructionApi {
     TransactionCapsule transactionCapsule = new TransactionCapsule(contract,
         Protocol.Transaction.Contract.ContractType.TransferContract);
 
-    JSONObject metadata = new JSONObject((Map<String, Object>) constructionPayloadsRequest.getMetadata());
+    JSONObject metadata = new JSONObject((Map<String, Object>) metaObj);
 
     String referenceBlockHash = metadata.getString("reference_block_hash");
     int referenceBlockNum = metadata.getIntValue("reference_block_num");

@@ -15,7 +15,7 @@ $ git clone https://github.com/tronprotocol/tron-rosetta-api.git
 Compile docker image and use MainNet configuration for the image by default:
 ```
 $ cd tron-rosetta-api
-$ docker build -t tron-rosetta-api .
+$ docker build -t --no-cache tron-rosetta-api .
 ```
 
 Compile a docker image from ubuntu:
