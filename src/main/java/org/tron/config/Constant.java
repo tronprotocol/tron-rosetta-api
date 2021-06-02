@@ -15,6 +15,7 @@ public class Constant {
 
   public static final String rosettaVersion = "1.4.0";
   public static final String middlewareVersion = "1.0.2";
+  public static final int onlineFieldSize = 96;
 
   // OperationStatus
   public static OperationStatus OPERATION_DEFAULT = new OperationStatus().status(contractResult.DEFAULT.name()).successful(true);

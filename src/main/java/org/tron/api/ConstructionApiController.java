@@ -5,11 +5,8 @@ import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.primitives.Ints;
-import com.google.protobuf.Any;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.grpc.Metadata;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
@@ -20,7 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.validation.Valid;
-import org.apache.commons.collections4.CollectionUtils;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +35,6 @@ import org.tron.model.*;
 import org.tron.model.Error;
 import org.tron.protos.Protocol;
 import org.tron.protos.contract.BalanceContract;
-import org.tron.common.crypto.Hash;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.StringUtil;
 import org.tron.common.utils.Commons;
@@ -254,13 +250,11 @@ public class ConstructionApiController implements ConstructionApi {
       for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           validatePreprocessRequest(constructionPreprocessRequest);
-          Pair<String, TransactionCapsule> pair = buildTransaction(constructionPreprocessRequest.getOperations(),constructionPreprocessRequest.getMetadata());
+          Pair<String, TransactionCapsule> pair = buildTransaction(constructionPreprocessRequest.getOperations(),null);
           TransactionCapsule transaction = pair.getRight();
           ConstructionPreprocessResponse response = new ConstructionPreprocessResponse();
           Map<String, Object> options = new HashMap<>();
-          Protocol.Transaction.Builder transactionWithSig = transaction.getInstance().toBuilder().
-              addSignature(ByteString.copyFrom(ByteArray.fromHexString("e0c493d50a193afdf44a5aaf65d06e7e13da22deb68ff665f223efa1ace357c114fff45a24330d6fda1a39aad9152237e610b108a4c781ce59c342c1e89f9b9801")));
-          options.put("size", transactionWithSig.build().getSerializedSize());
+          options.put("size", transaction.getInstance().getSerializedSize() + Constant.onlineFieldSize);
           response.options(options);
           return new ResponseEntity<>(response, HttpStatus.OK);
         }
@@ -381,11 +375,12 @@ public class ConstructionApiController implements ConstructionApi {
             response.setMetadata(metadatas);
             if (constructionMetadataRequest.getOptions() != null) {
               JSONObject metadata = new JSONObject((Map<String, Object>) constructionMetadataRequest.getOptions());
-              int bytesSize = metadata.getIntValue("size");
+              long bytesSize = metadata.getIntValue("size");
               if (dynamicPropertiesStore.supportVM()) {
                 bytesSize += org.tron.core.Constant.MAX_RESULT_SIZE_IN_TX;
               }
-              response.addSuggestedFeeItem(new Amount().value(Integer.toString(bytesSize)).currency(Default.CURRENCY));
+              long fee = bytesSize * dynamicPropertiesStore.getTransactionFee();
+              response.addSuggestedFeeItem(new Amount().value(Long.toString(fee)).currency(Default.CURRENCY));
             }
 
             return new ResponseEntity<>(response, HttpStatus.OK);
@@ -585,17 +580,17 @@ public class ConstructionApiController implements ConstructionApi {
     TransactionCapsule transactionCapsule = new TransactionCapsule(contract,
         Protocol.Transaction.Contract.ContractType.TransferContract);
 
-    JSONObject metadata = new JSONObject((Map<String, Object>) metaObj);
+    if (metaObj != null) {
+      JSONObject metadata = new JSONObject((Map<String, Object>) metaObj);
+      String referenceBlockHash = metadata.getString("reference_block_hash");
+      int referenceBlockNum = metadata.getIntValue("reference_block_num");
+      transactionCapsule.setReference(referenceBlockNum, ByteArray.fromHexString(referenceBlockHash));
+      long expiration = metadata.getLongValue("expiration");
+      transactionCapsule.setExpiration(expiration);
+      long timestamp = metadata.getLongValue("timestamp");
+      transactionCapsule.setTimestamp(timestamp);
+    }
 
-    String referenceBlockHash = metadata.getString("reference_block_hash");
-    int referenceBlockNum = metadata.getIntValue("reference_block_num");
-    transactionCapsule.setReference(referenceBlockNum, ByteArray.fromHexString(referenceBlockHash));
-
-    long expiration = metadata.getLongValue("expiration");
-    transactionCapsule.setExpiration(expiration);
-
-    long timestamp = metadata.getLongValue("timestamp");
-    transactionCapsule.setTimestamp(timestamp);
     return Pair.of(src, transactionCapsule);
   }
 
