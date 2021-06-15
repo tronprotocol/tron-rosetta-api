@@ -310,16 +310,37 @@ public class BlockApiController implements BlockApi {
         .transactionIdentifier(new org.tron.model.TransactionIdentifier()
             .hash(ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray())));
     //2. set operations
+    int feeOperationCount = 2;
+    if (chainBaseManager.getDynamicPropertiesStore().supportBlackHoleOptimization()||
+        chainBaseManager.getDynamicPropertiesStore().supportTransactionFeePool()) {
+      feeOperationCount = 1;
+    }
     List<BalanceContract.TransactionBalanceTrace.Operation> operations = transactionBalanceTrace.getOperationList();
     for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
-      rstTx.addOperationsItem(new org.tron.model.Operation()
-          .operationIdentifier(new OperationIdentifier().index(op.getOperationIdentifier()))
+      long index = op.getOperationIdentifier();
+      if (index < feeOperationCount) {
+        continue;
+      }
+      index = index - feeOperationCount;
+      org.tron.model.Operation operation = new org.tron.model.Operation()
+          .operationIdentifier(new OperationIdentifier().index(index))
           .type(transactionBalanceTrace.getType())
           .status(transactionBalanceTrace.getStatus())
           .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(op.getAmount())))
-          .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
-    }
+          .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray())));
 
+      if (1 == index % 2) {
+        operation.addRelatedOperationsItem(new OperationIdentifier().index(index - 1));
+      }
+      rstTx.addOperationsItem(operation);
+    }
+    BalanceContract.TransactionBalanceTrace.Operation op = operations.get(0);
+    rstTx.addOperationsItem(new org.tron.model.Operation()
+        .operationIdentifier(new OperationIdentifier().index(2l))
+        .type("Fee")
+        .status(transactionBalanceTrace.getStatus())
+        .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(op.getAmount())))
+        .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
     return rstTx;
   }
 }
