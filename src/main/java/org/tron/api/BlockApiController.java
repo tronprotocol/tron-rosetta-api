@@ -311,11 +311,15 @@ public class BlockApiController implements BlockApi {
             .hash(ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray())));
     //2. set operations
     int feeOperationCount = 2;
-    if (chainBaseManager.getDynamicPropertiesStore().supportBlackHoleOptimization()||
+    List<BalanceContract.TransactionBalanceTrace.Operation> operations = transactionBalanceTrace.getOperationList();
+    if (operations.size() <= 2) {
+      // use free net
+      feeOperationCount = 0;
+    } else if (chainBaseManager.getDynamicPropertiesStore().supportBlackHoleOptimization() ||
         chainBaseManager.getDynamicPropertiesStore().supportTransactionFeePool()) {
+      // fee operation only consume, but not add into the black hole
       feeOperationCount = 1;
     }
-    List<BalanceContract.TransactionBalanceTrace.Operation> operations = transactionBalanceTrace.getOperationList();
     for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
       long index = op.getOperationIdentifier();
       if (index < feeOperationCount) {
@@ -334,13 +338,15 @@ public class BlockApiController implements BlockApi {
       }
       rstTx.addOperationsItem(operation);
     }
-    BalanceContract.TransactionBalanceTrace.Operation op = operations.get(0);
-    rstTx.addOperationsItem(new org.tron.model.Operation()
-        .operationIdentifier(new OperationIdentifier().index(2l))
-        .type("Fee")
-        .status(transactionBalanceTrace.getStatus())
-        .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(op.getAmount())))
-        .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
+    if (feeOperationCount != 0) {
+      BalanceContract.TransactionBalanceTrace.Operation op = operations.get(0);
+      rstTx.addOperationsItem(new org.tron.model.Operation()
+          .operationIdentifier(new OperationIdentifier().index((long)(rstTx.getOperations().size())))
+          .type("Fee")
+          .status(transactionBalanceTrace.getStatus())
+          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(op.getAmount())))
+          .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
+    }
     return rstTx;
   }
 }
