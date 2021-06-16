@@ -1,13 +1,17 @@
 package org.tron.api;
 
 import com.google.common.primitives.Longs;
+import com.google.protobuf.Any;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import java.lang.Error;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
-import javax.annotation.PostConstruct;
 import javax.validation.Valid;
 
 import com.alibaba.fastjson.JSON;
@@ -31,26 +35,26 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.tron.common.Default;
-import org.tron.common.utils.Base58;
 import org.tron.common.utils.ByteArray;
-import org.tron.common.utils.StringUtil;
+import org.tron.common.utils.Commons;
 import org.tron.config.Constant;
 import org.tron.core.ChainBaseManager;
 import org.tron.core.capsule.BlockBalanceTraceCapsule;
 import org.tron.core.capsule.BlockCapsule;
-import org.tron.core.capsule.ContractCapsule;
+import org.tron.core.capsule.ExchangeCapsule;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.core.exception.BadItemException;
 import org.tron.core.exception.ItemNotFoundException;
 import org.tron.core.store.AccountTraceStore;
-import org.tron.core.store.BalanceTraceStore;
 import org.tron.model.*;
 import org.tron.protos.Protocol;
 import org.tron.protos.contract.BalanceContract;
 import org.tron.protos.contract.BalanceContract.TransactionBalanceTrace;
+import org.tron.protos.contract.ExchangeContract;
 
 import static org.tron.common.utils.StringUtil.encode58Check;
-import static org.tron.protos.Protocol.Transaction.Contract.ContractType.TransferContract;
+import static org.tron.core.config.Parameter.ChainSymbol.TRX_SYMBOL_BYTES;
+import static org.tron.protos.Protocol.Transaction.Contract.ContractType;
 import static org.tron.protos.Protocol.Transaction.Result.contractResult.SUCCESS;
 
 @Controller
@@ -79,7 +83,7 @@ public class BlockApiController implements BlockApi {
       TransactionBalanceTrace transactionBalanceTrace =
           TransactionBalanceTrace.newBuilder()
               .setTransactionIdentifier(transactionCapsule.getTransactionId().getByteString())
-              .setType(TransferContract.name())
+              .setType(ContractType.TransferContract.name())
               .setStatus(SUCCESS.name())
               .addOperation(operation)
               .build();
@@ -196,8 +200,18 @@ public class BlockApiController implements BlockApi {
                 blockBalanceTraceCapsule.getInstance();
 
             List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
+            List<TransactionCapsule> transactions = tronBlock.getTransactions();
+            int index = 0;
             for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
-              rstTxs.add(toRosettaTx(tronTx));
+              for (; index < transactions.size(); ++index) {
+                if (transactions.get(index).getTransactionId().getByteString().equals(tronTx.getTransactionIdentifier())) {
+                  break;
+                }
+              }
+              if (index == transactions.size()) {
+                throw new ItemNotFoundException("block transaction info not find");
+              }
+              rstTxs.add(toRosettaTx(tronTx, transactions.get(index), tronBlock.getNum()==0));
             }
             rstBlock.setTransactions(rstTxs);
 
@@ -286,9 +300,20 @@ public class BlockApiController implements BlockApi {
 
       //2. get tx info when match txID
       List<BalanceContract.TransactionBalanceTrace> tronTxs = blockBalanceTrace.getTransactionBalanceTraceList();
+      List<TransactionCapsule> transactions = tronBlock.getTransactions();
+      int index = 0;
       for (BalanceContract.TransactionBalanceTrace tronTx : tronTxs) {
         if (ByteArray.toHexString(tronTx.getTransactionIdentifier().toByteArray()).equals(txID)) {
-          blockTransactionResponse.setTransaction(toRosettaTx(tronTx));
+          for (; index < transactions.size(); ++index) {
+            if (transactions.get(index).getTransactionId().getByteString().equals(tronTx.getTransactionIdentifier())) {
+              break;
+            }
+          }
+          if (index == transactions.size()) {
+            throw new ItemNotFoundException("block transaction info not find");
+          }
+          blockTransactionResponse.setTransaction(toRosettaTx(tronTx, transactions.get(index), tronBlock.getNum() == 0));
+          break;
         }
       }
 
@@ -304,21 +329,63 @@ public class BlockApiController implements BlockApi {
     return Pair.of(200, returnString);
   }
 
-  public org.tron.model.Transaction toRosettaTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace){
+
+  private List<TransactionBalanceTrace.Operation> removeBlackHole(List<TransactionBalanceTrace.Operation> operations){
+    List<TransactionBalanceTrace.Operation> result = new LinkedList<>();
+    for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
+      if (op.getAddress().toByteArray().equals(chainBaseManager.getAccountStore().getBlackholeAddress())) {
+        continue;
+      }
+      result.add(op);
+    }
+    return result;
+  }
+
+  private org.tron.model.Transaction toRosettaTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace, TransactionCapsule transaction, boolean isGenesisBlock){
+    if (isGenesisBlock) {
+      return toRosettaGenesisTx(transactionBalanceTrace);
+    }
+    if (transactionBalanceTrace.getType().equals(ContractType.TransferContract.name())) {
+      return toRosettaTransferTx(transactionBalanceTrace);
+    }
+    if (transactionBalanceTrace.getType().equals(ContractType.CreateSmartContract.name()) ||
+        transactionBalanceTrace.getType().equals(ContractType.TriggerSmartContract.name())) {
+      return toRosettaVmTx(transactionBalanceTrace);
+    }
+    return toRosettaOtherTx(transactionBalanceTrace,transaction);
+  }
+
+
+  private org.tron.model.Transaction toRosettaGenesisTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace){
     //1. set tx
     org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
         .transactionIdentifier(new org.tron.model.TransactionIdentifier()
             .hash(ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray())));
     //2. set operations
-    int feeOperationCount = 2;
     List<BalanceContract.TransactionBalanceTrace.Operation> operations = transactionBalanceTrace.getOperationList();
-    if (operations.size() <= 2) {
-      // use free net
-      feeOperationCount = 0;
-    } else if (chainBaseManager.getDynamicPropertiesStore().supportBlackHoleOptimization() ||
-        chainBaseManager.getDynamicPropertiesStore().supportTransactionFeePool()) {
-      // fee operation only consume, but not add into the black hole
-      feeOperationCount = 1;
+    for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
+      long index = op.getOperationIdentifier();
+      org.tron.model.Operation operation = new org.tron.model.Operation()
+          .operationIdentifier(new OperationIdentifier().index(index))
+          .type("GenesisTransferContract")
+          .status(transactionBalanceTrace.getStatus())
+          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(op.getAmount())))
+          .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray())));
+      rstTx.addOperationsItem(operation);
+    }
+    return rstTx;
+  }
+
+  private org.tron.model.Transaction toRosettaTransferTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace){
+    //1. set tx
+    org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
+        .transactionIdentifier(new org.tron.model.TransactionIdentifier()
+            .hash(ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray())));
+    //2. set operations
+    int feeOperationCount = 0;
+    List<BalanceContract.TransactionBalanceTrace.Operation> operations = removeBlackHole(transactionBalanceTrace.getOperationList());
+    if (operations.size() > 2) {
+      feeOperationCount = operations.size()-2;
     }
     for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
       long index = op.getOperationIdentifier();
@@ -348,5 +415,154 @@ public class BlockApiController implements BlockApi {
           .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
     }
     return rstTx;
+  }
+
+  private org.tron.model.Transaction toRosettaVmTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace){
+    //1. set tx
+    org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
+        .transactionIdentifier(new org.tron.model.TransactionIdentifier()
+            .hash(ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray())));
+    //2. set operations
+    List<BalanceContract.TransactionBalanceTrace.Operation> operations = removeBlackHole(transactionBalanceTrace.getOperationList());
+    long fee = 0;
+    String feeAddress = "";
+    long preAmount = 0;
+    String preAddress = "";
+    for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
+      if (op.getAmount() != preAmount * -1) {
+        if (preAmount != 0) {
+          fee += preAmount;
+          feeAddress = preAddress;
+        }
+        preAmount = op.getAmount();
+        preAddress = encode58Check(op.getAddress().toByteArray());
+        continue;
+      }
+      long curIndex = rstTx.getOperations().size();
+      rstTx.addOperationsItem(new org.tron.model.Operation()
+          .operationIdentifier(new OperationIdentifier().index(curIndex))
+          .type(transactionBalanceTrace.getType())
+          .status(transactionBalanceTrace.getStatus())
+          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(preAmount)))
+          .account(new AccountIdentifier().address(preAddress)));
+      rstTx.addOperationsItem(new org.tron.model.Operation()
+          .operationIdentifier(new OperationIdentifier().index(curIndex + 1))
+          .addRelatedOperationsItem(new OperationIdentifier().index(curIndex))
+          .type(transactionBalanceTrace.getType())
+          .status(transactionBalanceTrace.getStatus())
+          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(op.getAmount())))
+          .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
+      preAmount = 0;
+    }
+    if (fee != 0) {
+      BalanceContract.TransactionBalanceTrace.Operation op = operations.get(0);
+      rstTx.addOperationsItem(new org.tron.model.Operation()
+          .operationIdentifier(new OperationIdentifier().index((long)(rstTx.getOperations().size())))
+          .type("Fee")
+          .status(transactionBalanceTrace.getStatus())
+          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(fee)))
+          .account(new AccountIdentifier().address(feeAddress)));
+    }
+    return rstTx;
+  }
+
+  private org.tron.model.Transaction toRosettaOtherTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace, TransactionCapsule transaction){
+    //1. set tx
+    org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
+        .transactionIdentifier(new org.tron.model.TransactionIdentifier()
+            .hash(ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray())));
+
+    List<BalanceContract.TransactionBalanceTrace.Operation> operations = removeBlackHole(transactionBalanceTrace.getOperationList());
+    int transactionCount = getTransOperationCount(transaction.getInstance().getRawData().getContract(0));
+    int feeOperationCount = operations.size() - transactionCount;
+    if (transactionBalanceTrace.getType().equals(ContractType.MarketSellAssetContract.name()) ||
+        transactionBalanceTrace.getType().equals(ContractType.MarketCancelOrderContract.name())) {
+      feeOperationCount = 0;
+    }
+    int fee = 0;
+    String feeAddress = "";
+    for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
+      long index = op.getOperationIdentifier();
+      if (index < feeOperationCount) {
+        fee += op.getAmount();
+        if (feeAddress.equals("")) {
+          feeAddress = encode58Check(op.getAddress().toByteArray());
+        }
+        continue;
+      }
+      index = index - feeOperationCount;
+      org.tron.model.Operation operation = new org.tron.model.Operation()
+          .operationIdentifier(new OperationIdentifier().index(index))
+          .type(transactionBalanceTrace.getType())
+          .status(transactionBalanceTrace.getStatus())
+          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(op.getAmount())))
+          .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray())));
+      rstTx.addOperationsItem(operation);
+    }
+    if (fee != 0) {
+      rstTx.addOperationsItem(new org.tron.model.Operation()
+          .operationIdentifier(new OperationIdentifier().index((long)(rstTx.getOperations().size())))
+          .type("Fee")
+          .status(transactionBalanceTrace.getStatus())
+          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(fee)))
+          .account(new AccountIdentifier().address(feeAddress)));
+    }
+    return rstTx;
+  }
+
+  private int getTransOperationCount(Protocol.Transaction.Contract contract) {
+    Any contractParameter = contract.getParameter();
+    try {
+      if (contract.getType().equals(ContractType.ExchangeCreateContract)) {
+        final ExchangeContract.ExchangeCreateContract exchangeCreateContract =
+            contractParameter.unpack(ExchangeContract.ExchangeCreateContract.class);
+        if (Arrays.equals(exchangeCreateContract.getFirstTokenId().toByteArray(), TRX_SYMBOL_BYTES) ||
+            Arrays.equals(exchangeCreateContract.getSecondTokenId().toByteArray(), TRX_SYMBOL_BYTES)) {
+          return 1;
+        }
+      } else if (contract.getType().equals(ContractType.ExchangeInjectContract)) {
+        final ExchangeContract.ExchangeInjectContract exchangeInjectContract =
+            contractParameter.unpack(ExchangeContract.ExchangeInjectContract.class);
+
+        ExchangeCapsule exchangeCapsule = Commons.getExchangeStoreFinal(chainBaseManager.getDynamicPropertiesStore(),
+            chainBaseManager.getExchangeStore(), chainBaseManager.getExchangeV2Store()).
+            get(ByteArray.fromLong(exchangeInjectContract.getExchangeId()));
+        if (Arrays.equals(exchangeCapsule.getFirstTokenId(), TRX_SYMBOL_BYTES) ||
+            Arrays.equals(exchangeCapsule.getSecondTokenId(), TRX_SYMBOL_BYTES)) {
+          return 1;
+        }
+      } else if (contract.getType().equals(ContractType.ExchangeTransactionContract)) {
+        final ExchangeContract.ExchangeTransactionContract exchangeTransactionContract =
+            contractParameter.unpack(ExchangeContract.ExchangeTransactionContract.class);
+
+        ExchangeCapsule exchangeCapsule = Commons.getExchangeStoreFinal(chainBaseManager.getDynamicPropertiesStore(),
+                chainBaseManager.getExchangeStore(), chainBaseManager.getExchangeV2Store()).
+                get(ByteArray.fromLong(exchangeTransactionContract.getExchangeId()));
+        if (Arrays.equals(exchangeCapsule.getFirstTokenId(), TRX_SYMBOL_BYTES) ||
+            Arrays.equals(exchangeCapsule.getSecondTokenId(), TRX_SYMBOL_BYTES)) {
+          return 1;
+        }
+      }
+      else if (contract.getType().equals(ContractType.ExchangeWithdrawContract)) {
+        final ExchangeContract.ExchangeWithdrawContract exchangeWithdrawContract =
+            contractParameter.unpack(ExchangeContract.ExchangeWithdrawContract.class);
+
+        ExchangeCapsule exchangeCapsule = Commons.getExchangeStoreFinal(chainBaseManager.getDynamicPropertiesStore(),
+            chainBaseManager.getExchangeStore(), chainBaseManager.getExchangeV2Store()).
+            get(ByteArray.fromLong(exchangeWithdrawContract.getExchangeId()));
+        if (Arrays.equals(exchangeCapsule.getFirstTokenId(), TRX_SYMBOL_BYTES) ||
+            Arrays.equals(exchangeCapsule.getSecondTokenId(), TRX_SYMBOL_BYTES)) {
+          return 1;
+        }
+      }
+    } catch (ItemNotFoundException | InvalidProtocolBufferException exception) {
+      return 0;
+    }
+    Map<ContractType,Integer>transactionCountMap = new HashMap<>();
+    transactionCountMap.put(ContractType.FreezeBalanceContract,1);
+    transactionCountMap.put(ContractType.UnfreezeBalanceContract,1);
+    transactionCountMap.put(ContractType.WithdrawBalanceContract,1);
+    return transactionCountMap.get(contract.getType())==null ?
+        0 : transactionCountMap.get(contract.getType());
   }
 }
