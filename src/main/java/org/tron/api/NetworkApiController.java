@@ -132,7 +132,10 @@ public class NetworkApiController implements NetworkApi {
         Allow allow = new Allow();
         allow.setHistoricalBalanceLookup(true);
        // allow.setHistoricalBalanceLookup(true);
-        allow.setOperationTypes(Constant.supportOperationTypes);
+        List<String> supportOperationTypes = Constant.supportOperationTypes;
+        supportOperationTypes.add("Fee");
+        supportOperationTypes.add("GenesisTransferContract");
+        allow.setOperationTypes(supportOperationTypes);
         allow.setOperationStatuses(Constant.supportOperationStatuses);
         allow.setErrors(Constant.supportErrors);
 
