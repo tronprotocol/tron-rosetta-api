@@ -48,11 +48,11 @@ public class Constant {
   public static Error BLOCK_ID_OVER_CURRENT_LAST =
       new Error().code(201).message("Block ID is bigger than current latest block").retriable(true).details(null);
   public static Error SERVER_EXCEPTION_CATCH =
-      new Error().code(202).message("exception catch").retriable(false).details(null);
+      new Error().code(202).message("Exception catch").retriable(false).details(null);
   public final static Error BLOCK_IS_NOT_EXISTS =
-      new Error().code(203).message("this block is not exists.").retriable(false).details(null);
+      new Error().code(203).message("This block is not exists.").retriable(false).details(null);
   public final static Error ACCOUNT_IS_NOT_EXISTS =
-      new Error().code(204).message("this account is not exists.").retriable(false).details(null);
+      new Error().code(204).message("This account is not exists.").retriable(false).details(null);
 
 
   public static Error newError(Error error) {
@@ -64,49 +64,17 @@ public class Constant {
         .message(error.getMessage());
   }
 
-//  public static String[] supportOperationTypes = new String[]{
-//      "AccountCreateContract",
-//      "TransferContract",
-//      "TransferAssetContract",
-//      "VoteAssetContract",
-//      "VoteWitnessContract",
-//      "WitnessCreateContract",
-//      "AssetIssueContract",
-//      "WitnessUpdateContract",
-//      "ParticipateAssetIssueContract",
-//      "AccountUpdateContract",
-//      "FreezeBalanceContract",
-//      "UnfreezeBalanceContract",
-//      "WithdrawBalanceContract",
-//      "UnfreezeAssetContract",
-//      "UpdateAssetContract",
-//      "ProposalCreateContract",
-//      "ProposalApproveContract",
-//      "ProposalDeleteContract",
-//      "SetAccountIdContract",
-//      "CustomContract",
-//      "CreateSmartContract",
-//      "TriggerSmartContract",
-//      "GetContract",
-//      "UpdateSettingContract",
-//      "ExchangeCreateContract",
-//      "ExchangeInjectContract",
-//      "ExchangeWithdrawContract",
-//      "ExchangeTransactionContract",
-//      "UpdateEnergyLimitContract",
-//      "AccountPermissionUpdateContract",
-//      "ClearABIContract",
-//      "UpdateBrokerageContract",
-//      "ShieldedTransferContract",
-//      "MarketSellAssetContract",
-//      "MarketCancelOrderContract",
-//      "UNRECOGNIZED"
-//  };
+  public static List<String> supportOperationTypes = getSupportOperationTypes();
 
-  public static List<String> supportOperationTypes = Stream.of(ContractType.values())
-      .filter(e -> e != ContractType.UNRECOGNIZED)
-      .map(ContractType::name)
-      .collect(Collectors.toList());
+  public static List<String> getSupportOperationTypes() {
+    List<String> supportOperationTypes = Stream.of(ContractType.values())
+        .filter(e -> e != ContractType.UNRECOGNIZED)
+        .map(ContractType::name)
+        .collect(Collectors.toList());
+    supportOperationTypes.add("Fee");
+    supportOperationTypes.add("GenesisTransferContract");
+    return supportOperationTypes;
+  }
 
   public static List<OperationStatus> supportOperationStatuses = Stream.of(contractResult.values())
       .filter(e -> e != contractResult.UNRECOGNIZED)
