@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import javax.validation.Valid;
@@ -132,10 +133,7 @@ public class NetworkApiController implements NetworkApi {
         Allow allow = new Allow();
         allow.setHistoricalBalanceLookup(true);
        // allow.setHistoricalBalanceLookup(true);
-        List<String> supportOperationTypes = Constant.supportOperationTypes;
-        supportOperationTypes.add("Fee");
-        supportOperationTypes.add("GenesisTransferContract");
-        allow.setOperationTypes(supportOperationTypes);
+        allow.setOperationTypes(Constant.supportOperationTypes);
         allow.setOperationStatuses(Constant.supportOperationStatuses);
         allow.setErrors(Constant.supportErrors);
 
