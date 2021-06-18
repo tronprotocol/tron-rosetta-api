@@ -50,9 +50,9 @@ public class Constant {
   public static Error SERVER_EXCEPTION_CATCH =
       new Error().code(202).message("Exception catch").retriable(false).details(null);
   public final static Error BLOCK_IS_NOT_EXISTS =
-      new Error().code(203).message("This block is not exists.").retriable(false).details(null);
+      new Error().code(203).message("This block does not exists.").retriable(false).details(null);
   public final static Error ACCOUNT_IS_NOT_EXISTS =
-      new Error().code(204).message("This account is not exists.").retriable(false).details(null);
+      new Error().code(204).message("This account does not exists.").retriable(false).details(null);
 
 
   public static Error newError(Error error) {
