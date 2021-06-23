@@ -163,6 +163,7 @@ public class ConstructionApiController implements ConstructionApi {
 
               constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
                   .operationIdentifier(new OperationIdentifier().index(op_index+1))
+                  .addRelatedOperationsItem(new OperationIdentifier().index(op_index))
                   .account(new AccountIdentifier().address(encode58Check(balanceContract.getToAddress().toByteArray())))
                   .amount(new Amount().value(Long.toString(balanceContract.getAmount())).currency(Default.CURRENCY))
                   .type(contract.getType().toString()));
