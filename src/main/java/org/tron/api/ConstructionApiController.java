@@ -406,8 +406,8 @@ public class ConstructionApiController implements ConstructionApi {
                 long fee = processor.calculateConsume(transaction);
                 if (fee != 0) {
                   metadatas.put("fee", fee);
-                  response.addSuggestedFeeItem(new Amount().value(Long.toString(fee)).currency(Default.CURRENCY));
                 }
+                response.addSuggestedFeeItem(new Amount().value(Long.toString(fee)).currency(Default.CURRENCY));
                 response.setMetadata(metadatas);
                 returnString = objectMapper.writeValueAsString(response);
               }
