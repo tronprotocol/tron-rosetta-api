@@ -163,6 +163,13 @@ public class BlockApiController implements BlockApi {
 
             //1. get block
             if (null != blockIndex) {
+              if (blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum()) {
+                error = Constant.newError(Constant.BLOCK_ID_OVER_CURRENT_LAST);
+                returnString = JSON.toJSONString(error);
+                ApiUtil.setExampleResponse(request, "application/json", returnString);
+                statusCode.set(500);
+                break;
+              }
               tronBlock = chainBaseManager.getBlockByNum(blockIndex);
             } else if (null != blockHash) {
               tronBlock = chainBaseManager.getBlockStore()
@@ -219,7 +226,11 @@ public class BlockApiController implements BlockApi {
             blockResponse.setBlock(rstBlock);
 
             returnString = mapper.writeValueAsString(blockResponse);
-          } catch (java.lang.Error | ItemNotFoundException | BadItemException | JsonProcessingException e) {
+          } catch (ItemNotFoundException | BadItemException e) {
+            statusCode.set(500);
+            error = Constant.newError(Constant.BLOCK_IS_NOT_EXISTS);
+            returnString = JSON.toJSONString(error);
+          } catch (java.lang.Error | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(500);
             error.setCode(100);
@@ -318,7 +329,11 @@ public class BlockApiController implements BlockApi {
       }
 
       returnString = mapper.writeValueAsString(blockTransactionResponse);
-    } catch (java.lang.Error | ItemNotFoundException | BadItemException | JsonProcessingException e) {
+    } catch ( ItemNotFoundException | BadItemException e) {
+      error = Constant.newError(Constant.BLOCK_IS_NOT_EXISTS);
+      returnString = JSON.toJSONString(error);
+      return Pair.of(500, returnString);
+    } catch ( java.lang.Error | JsonProcessingException e) {
       e.printStackTrace();
       error = Constant.newError(Constant.SERVER_EXCEPTION_CATCH);
       error.setDetails(new org.tron.model.Error().message(e.getMessage()));

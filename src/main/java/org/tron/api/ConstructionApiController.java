@@ -29,8 +29,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.tron.common.BandwidthProcessor;
 import org.tron.common.Default;
 import org.tron.common.crypto.ECKey;
+import org.tron.core.ChainBaseManager;
+import org.tron.core.capsule.TransactionResultCapsule;
+import org.tron.core.exception.ContractValidateException;
 import org.tron.model.*;
 import org.tron.model.Error;
 import org.tron.protos.Protocol;
@@ -60,7 +64,6 @@ import org.tron.model.ConstructionSubmitRequest;
 import org.tron.model.CurveType;
 import org.tron.model.PublicKey;
 import org.tron.model.Signature;
-
 import static org.tron.common.utils.StringUtil.encode58Check;
 
 @Controller
@@ -73,6 +76,9 @@ public class ConstructionApiController implements ConstructionApi {
   private DynamicPropertiesStore dynamicPropertiesStore;
 
   @Autowired
+  private ChainBaseManager chainBaseManager;
+
+  @Autowired
   private Wallet wallet;
 
   private ObjectMapper objectMapper = new ObjectMapper();
@@ -80,6 +86,7 @@ public class ConstructionApiController implements ConstructionApi {
 
   @org.springframework.beans.factory.annotation.Autowired
   public ConstructionApiController(NativeWebRequest request) {
+    objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.request = request;
   }
 
@@ -124,10 +131,11 @@ public class ConstructionApiController implements ConstructionApi {
                 ByteArray.fromHexString(constructionParseRequest.getTransaction()));
 
 //            String status = Protocol.Transaction.Result.contractResult.DEFAULT.name();
-            String status = "";
-            if (0 != transaction.getInstance().getRetCount()) {
-              status = transaction.getInstance().getRet(0).getContractRet().name();
+            long fee = 0;
+            if (transaction.getInstance().getRetCount() > 0) {
+              fee = transaction.getInstance().getRet(0).getFee();
             }
+
             java.util.List<org.tron.protos.Protocol.Transaction.Contract> contracts =
                 transaction.getInstance().getRawData().getContractList();
 
@@ -152,15 +160,22 @@ public class ConstructionApiController implements ConstructionApi {
                   .account(new AccountIdentifier().address(encode58Check(balanceContract.getOwnerAddress().toByteArray())))
                   .amount(new Amount().value(own_amount+balanceContract.getAmount()).currency(Default.CURRENCY))
                   .type(contract.getType().toString()));
-//                  .status(status));
+
               constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
                   .operationIdentifier(new OperationIdentifier().index(op_index+1))
                   .account(new AccountIdentifier().address(encode58Check(balanceContract.getToAddress().toByteArray())))
                   .amount(new Amount().value(Long.toString(balanceContract.getAmount())).currency(Default.CURRENCY))
                   .type(contract.getType().toString()));
-//                  .status(status));
 
               op_index += 2;
+              if (fee > 0) {
+                constructionParseResponse.addOperationsItem(new org.tron.model.Operation()
+                    .operationIdentifier(new OperationIdentifier().index(op_index))
+                    .account(new AccountIdentifier().address(encode58Check(balanceContract.getOwnerAddress().toByteArray())))
+                    .amount(new Amount().value(Long.toString(fee * -1)).currency(Default.CURRENCY))
+                    .type("Fee"));
+                op_index += 1;
+              }
             }
 
             //3. get metadata
@@ -169,6 +184,9 @@ public class ConstructionApiController implements ConstructionApi {
             metadatas.put("reference_block_hash", ByteArray.toHexString(transaction.getInstance().getRawData().getRefBlockHash().toByteArray()));
             metadatas.put("expiration", transaction.getExpiration());
             metadatas.put("timestamp", transaction.getTimestamp());
+            if (fee > 0) {
+              metadatas.put("fee", fee);
+            }
             JSONObject metadata = new JSONObject(metadatas);
             constructionParseResponse.setMetadata(metadata);
 
@@ -254,7 +272,7 @@ public class ConstructionApiController implements ConstructionApi {
           TransactionCapsule transaction = pair.getRight();
           ConstructionPreprocessResponse response = new ConstructionPreprocessResponse();
           Map<String, Object> options = new HashMap<>();
-          options.put("size", transaction.getInstance().getSerializedSize() + Constant.onlineFieldSize);
+          options.put("unsigned_transaction", ByteArray.toHexString(transaction.getInstance().toByteArray()));
           response.options(options);
           return new ResponseEntity<>(response, HttpStatus.OK);
         }
@@ -356,6 +374,8 @@ public class ConstructionApiController implements ConstructionApi {
     public ResponseEntity<ConstructionMetadataResponse> constructionMetadata
     (@ApiParam(value = "", required = true) @Valid @RequestBody ConstructionMetadataRequest constructionMetadataRequest)
     {
+      HttpStatus statusCode = HttpStatus.OK;
+      String returnString = "";
       if (getRequest().isPresent()) {
         for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
           if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
@@ -372,23 +392,37 @@ public class ConstructionApiController implements ConstructionApi {
             metadatas.put("expiration", expiration);
             metadatas.put("timestamp", timestamp);
             ConstructionMetadataResponse response = new ConstructionMetadataResponse();
-            response.setMetadata(metadatas);
-            if (constructionMetadataRequest.getOptions() != null) {
-              JSONObject metadata = new JSONObject((Map<String, Object>) constructionMetadataRequest.getOptions());
-              long bytesSize = metadata.getIntValue("size");
-              if (dynamicPropertiesStore.supportVM()) {
-                bytesSize += org.tron.core.Constant.MAX_RESULT_SIZE_IN_TX;
+            try {
+              if (constructionMetadataRequest.getOptions() != null) {
+                JSONObject metadata = new JSONObject((Map<String, Object>) constructionMetadataRequest.getOptions());
+                TransactionCapsule transaction = new TransactionCapsule(
+                    ByteArray.fromHexString(metadata.getString("unsigned_transaction")));
+                BandwidthProcessor processor = new BandwidthProcessor(chainBaseManager);
+                transaction.setReference(referenceBlockNum,ByteArray.fromHexString(referenceBlockHash));
+                transaction.setExpiration(expiration);
+                transaction.setTimestamp(timestamp);
+                transaction.sign(ByteArray.fromHexString("111111"));
+                transaction.setTimestamp();
+                long fee = processor.calculateConsume(transaction);
+                if (fee != 0) {
+                  metadatas.put("fee", fee);
+                  response.addSuggestedFeeItem(new Amount().value(Long.toString(fee)).currency(Default.CURRENCY));
+                }
+                response.setMetadata(metadatas);
+                returnString = objectMapper.writeValueAsString(response);
               }
-              long fee = bytesSize * dynamicPropertiesStore.getTransactionFee();
-              response.addSuggestedFeeItem(new Amount().value(Long.toString(fee)).currency(Default.CURRENCY));
+            } catch (BadItemException | ContractValidateException | JsonProcessingException e) {
+              e.printStackTrace();
+              statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+              Error error = Constant.newError(Constant.INVALID_REQUEST_FORMAT);
+              returnString = JSON.toJSONString(error);
             }
-
-            return new ResponseEntity<>(response, HttpStatus.OK);
+            ApiUtil.setExampleResponse(request, "application/json", returnString);
           }
         }
       }
 
-      return new ResponseEntity<>(HttpStatus.valueOf(200));
+      return new ResponseEntity<>(statusCode);
     }
 
   /**
@@ -474,6 +508,7 @@ public class ConstructionApiController implements ConstructionApi {
           try {
             TransactionCapsule transactionSigned = new TransactionCapsule(
                     ByteArray.fromHexString(constructionSubmitRequest.getSignedTransaction()));
+            transactionSigned.resetResult();
             GrpcAPI.Return result = wallet.broadcastTransaction(transactionSigned.getInstance());
             if (result.getResult()) {
               String transactionHash = transactionSigned.getTransactionId().toString();
@@ -492,11 +527,7 @@ public class ConstructionApiController implements ConstructionApi {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
             error = Constant.newError(Constant.INVALID_TRANSACTION_FORMAT);
-            try {
-              returnString = objectMapper.writeValueAsString(error);
-            } catch (JsonProcessingException ex) {
-              //ex.printStackTrace();
-            }
+            returnString = JSON.toJSONString(error);
           }
 
           ApiUtil.setExampleResponse(request, "application/json", returnString);
@@ -589,6 +620,12 @@ public class ConstructionApiController implements ConstructionApi {
       transactionCapsule.setExpiration(expiration);
       long timestamp = metadata.getLongValue("timestamp");
       transactionCapsule.setTimestamp(timestamp);
+      long fee = metadata.getLongValue("fee");
+      if (fee > 0) {
+        TransactionResultCapsule ret = new TransactionResultCapsule();
+        ret.setFee(fee);
+        transactionCapsule.setResult(ret);
+      }
     }
 
     return Pair.of(src, transactionCapsule);

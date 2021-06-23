@@ -127,11 +127,6 @@ public class AccountApiController implements AccountApi {
                 .retriable(false)
                 .details(accountBalanceRequest.getAccountIdentifier());
             return ApiUtil.sendError(request, JSON.toJSONString(error));
-          } catch (IllegalArgumentException e) {
-            Error error = Constant.newError(Constant.ACCOUNT_IS_NOT_EXISTS)
-                .retriable(false)
-                .details(accountBalanceRequest.getAccountIdentifier());
-            return ApiUtil.sendError(request, JSON.toJSONString(error));
           }
           HttpHeaders headers = new HttpHeaders();
           headers.setContentType(MediaType.APPLICATION_JSON_UTF8);
