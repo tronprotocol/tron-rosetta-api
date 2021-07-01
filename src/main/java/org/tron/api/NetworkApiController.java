@@ -1,5 +1,6 @@
 package org.tron.api;
 
+import com.alibaba.fastjson.JSON;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -34,6 +35,8 @@ import org.tron.config.Constant;
 import org.tron.core.ChainBaseManager;
 import org.tron.core.Wallet;
 import org.tron.core.capsule.BlockCapsule;
+import org.tron.core.exception.BadItemException;
+import org.tron.core.exception.ItemNotFoundException;
 import org.tron.model.Allow;
 import org.tron.model.BlockIdentifier;
 import org.tron.model.Error;
@@ -160,11 +163,17 @@ public class NetworkApiController implements NetworkApi {
             method = RequestMethod.POST)
     public ResponseEntity<NetworkStatusResponse> networkStatus(@ApiParam(value = "" ,required=true )  @Valid @RequestBody NetworkRequest networkRequest) {
         NetworkStatusResponse networkStatusResponse = new NetworkStatusResponse();
-        BlockCapsule currentBlock = chainBaseManager.getBlockStore().getBlockByLatestNum(1).get(0);
-        networkStatusResponse.setCurrentBlockIdentifier(
+        try {
+            BlockCapsule currentBlock = chainBaseManager.getBlockByNum(chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum());
+            networkStatusResponse.setCurrentBlockIdentifier(
                 new BlockIdentifier()
-                        .index(currentBlock.getNum())
-                        .hash(ByteArray.toHexString(currentBlock.getBlockId().getBytes())));
+                    .index(currentBlock.getNum())
+                    .hash(ByteArray.toHexString(currentBlock.getBlockId().getBytes())));
+            networkStatusResponse.setCurrentBlockTimestamp(currentBlock.getTimeStamp());
+        } catch (ItemNotFoundException | BadItemException e) {
+            ApiUtil.setExampleResponse(request, "application/json", JSON.toJSONString(Constant.newError(Constant.INVALID_REQUEST_FORMAT)));
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
 
         BlockCapsule genesisBlock = chainBaseManager.getGenesisBlock();
         networkStatusResponse.setGenesisBlockIdentifier(
@@ -178,7 +187,6 @@ public class NetworkApiController implements NetworkApi {
 //                        .hash(ByteArray.toHexString(currentBlock.getBlockId().getBytes())));
 
 //        networkStatusResponse.setCurrentBlockTimestamp(new Timestamp(currentBlock.getTimeStamp()));
-        networkStatusResponse.setCurrentBlockTimestamp(currentBlock.getTimeStamp());
 
         List<Channel> activePeers = new ArrayList<>(channelManager.getActivePeers());
         List<Peer> peers = Lists.newArrayList();

@@ -163,7 +163,7 @@ public class BlockApiController implements BlockApi {
 
             //1. get block
             if (null != blockIndex) {
-              if (blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum()) {
+              if (blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestBlockHeaderNumber()) {
                 error = Constant.newError(Constant.BLOCK_ID_OVER_CURRENT_LAST);
                 returnString = JSON.toJSONString(error);
                 ApiUtil.setExampleResponse(request, "application/json", returnString);
@@ -293,7 +293,7 @@ public class BlockApiController implements BlockApi {
       String txID = blockTransactionRequest.getTransactionIdentifier().getHash();
       System.out.println("blockIndex:" + blockIndex);
 
-      if (blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum()) {
+      if (blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestBlockHeaderNumber()) {
         error = Constant.newError(Constant.BLOCK_ID_OVER_CURRENT_LAST);
         returnString = JSON.toJSONString(error);
         return Pair.of(400, returnString);
