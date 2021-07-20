@@ -522,6 +522,9 @@ public class ConstructionApiController implements ConstructionApi {
               statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
               error = Constant.newError(Constant.BROADCAST_TRANSACTION_FAILED);
               error.details(result.getCodeValue()).message(result.getMessage().toStringUtf8());
+              if (result.getCodeValue() == GrpcAPI.Return.response_code.DUP_TRANSACTION_ERROR.getNumber()) {
+                error.message("Dup transaction");
+              }
               returnString = objectMapper.writeValueAsString(error);
             }
           } catch (BadItemException | JsonProcessingException e) {

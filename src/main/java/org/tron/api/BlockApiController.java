@@ -39,6 +39,7 @@ import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.Commons;
 import org.tron.config.Constant;
 import org.tron.core.ChainBaseManager;
+import org.tron.core.Wallet;
 import org.tron.core.capsule.BlockBalanceTraceCapsule;
 import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.capsule.ExchangeCapsule;
@@ -65,6 +66,9 @@ public class BlockApiController implements BlockApi {
 
   @Autowired
   private AccountTraceStore accountTraceStore;
+
+  @Autowired
+  private Wallet wallet;
 
   private final NativeWebRequest request;
 
@@ -433,24 +437,27 @@ public class BlockApiController implements BlockApi {
   }
 
   private org.tron.model.Transaction toRosettaVmTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace){
+    long energyFee = 0;
+    long netFee = 0;
+    long fee = 0;
+    String txid = ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray());
+    Protocol.TransactionInfo reply = wallet.getTransactionInfoById(transactionBalanceTrace.getTransactionIdentifier());
+    if (reply != null) {
+      energyFee = reply.getReceipt().getEnergyFee();
+      netFee = reply.getReceipt().getNetFee();
+      fee = reply.getFee();
+    }
     //1. set tx
     org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
         .transactionIdentifier(new org.tron.model.TransactionIdentifier()
             .hash(ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray())));
     //2. set operations
     List<BalanceContract.TransactionBalanceTrace.Operation> operations = removeBlackHole(transactionBalanceTrace.getOperationList());
-    long fee = 0;
+
     String feeAddress = "";
-    long preAmount = 0;
-    String preAddress = "";
     for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
-      if (op.getAmount() != preAmount * -1) {
-        if (preAmount != 0) {
-          fee += preAmount;
-          feeAddress = preAddress;
-        }
-        preAmount = op.getAmount();
-        preAddress = encode58Check(op.getAddress().toByteArray());
+      if (op.getAmount() == -1 * energyFee || op.getAmount() == -1 * netFee) {
+        feeAddress = encode58Check(op.getAddress().toByteArray());
         continue;
       }
       long curIndex = rstTx.getOperations().size();
@@ -458,19 +465,10 @@ public class BlockApiController implements BlockApi {
           .operationIdentifier(new OperationIdentifier().index(curIndex))
           .type(transactionBalanceTrace.getType())
           .status(transactionBalanceTrace.getStatus())
-          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(preAmount)))
-          .account(new AccountIdentifier().address(preAddress)));
-      rstTx.addOperationsItem(new org.tron.model.Operation()
-          .operationIdentifier(new OperationIdentifier().index(curIndex + 1))
-          .addRelatedOperationsItem(new OperationIdentifier().index(curIndex))
-          .type(transactionBalanceTrace.getType())
-          .status(transactionBalanceTrace.getStatus())
           .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(op.getAmount())))
           .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
-      preAmount = 0;
     }
     if (fee != 0) {
-      BalanceContract.TransactionBalanceTrace.Operation op = operations.get(0);
       rstTx.addOperationsItem(new org.tron.model.Operation()
           .operationIdentifier(new OperationIdentifier().index((long)(rstTx.getOperations().size())))
           .type("Fee")
