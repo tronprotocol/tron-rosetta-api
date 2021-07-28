@@ -505,14 +505,15 @@ public class ConstructionApiController implements ConstructionApi {
       for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           String returnString = "";
+          String transactionHash = "";
           Error error = null;
           try {
             TransactionCapsule transactionSigned = new TransactionCapsule(
                     ByteArray.fromHexString(constructionSubmitRequest.getSignedTransaction()));
             transactionSigned.resetResult();
             GrpcAPI.Return result = wallet.broadcastTransaction(transactionSigned.getInstance());
+            transactionHash = transactionSigned.getTransactionId().toString();
             if (result.getResult()) {
-              String transactionHash = transactionSigned.getTransactionId().toString();
               TransactionIdentifierResponse transactionIdentifierResponse = new TransactionIdentifierResponse();
               TransactionIdentifier transactionIdentifier = new TransactionIdentifier();
               transactionIdentifier.setHash(transactionHash);
@@ -521,7 +522,7 @@ public class ConstructionApiController implements ConstructionApi {
             } else {
               statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
               error = Constant.newError(Constant.BROADCAST_TRANSACTION_FAILED);
-              error.details(result.getCodeValue()).message(result.getMessage().toStringUtf8());
+              error.details(JSON.parseObject("{\"txID\":\"" + transactionHash + "\"}")).message(result.getMessage().toStringUtf8());
               if (result.getCodeValue() == GrpcAPI.Return.response_code.DUP_TRANSACTION_ERROR.getNumber()) {
                 error.message("Dup transaction");
               }
@@ -531,6 +532,7 @@ public class ConstructionApiController implements ConstructionApi {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
             error = Constant.newError(Constant.INVALID_TRANSACTION_FORMAT);
+            error.details(JSON.parseObject("{\"txID\":\"" + transactionHash + "\"}"));
             returnString = JSON.toJSONString(error);
           }
 
