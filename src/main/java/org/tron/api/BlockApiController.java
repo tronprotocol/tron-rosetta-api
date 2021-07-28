@@ -288,13 +288,14 @@ public class BlockApiController implements BlockApi {
 
   public Pair<Integer, String> handlerBlockTransaction(BlockTransactionRequest blockTransactionRequest){
     String returnString;
+    String txID = "";
     BlockTransactionResponse blockTransactionResponse = new BlockTransactionResponse();
     org.tron.model.Error error = new org.tron.model.Error();
     ObjectMapper mapper = new ObjectMapper();
     mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     try {
       long blockIndex = blockTransactionRequest.getBlockIdentifier().getIndex();
-      String txID = blockTransactionRequest.getTransactionIdentifier().getHash();
+      txID = blockTransactionRequest.getTransactionIdentifier().getHash();
       System.out.println("blockIndex:" + blockIndex);
 
       if (blockIndex > chainBaseManager.getDynamicPropertiesStore().getLatestBlockHeaderNumber()) {
@@ -335,12 +336,13 @@ public class BlockApiController implements BlockApi {
       returnString = mapper.writeValueAsString(blockTransactionResponse);
     } catch ( ItemNotFoundException | BadItemException e) {
       error = Constant.newError(Constant.BLOCK_IS_NOT_EXISTS);
+      error.setDetails(JSON.parseObject("{\"txID\":\"" + txID + "\"}"));
       returnString = JSON.toJSONString(error);
       return Pair.of(500, returnString);
     } catch ( java.lang.Error | JsonProcessingException e) {
       e.printStackTrace();
       error = Constant.newError(Constant.SERVER_EXCEPTION_CATCH);
-      error.setDetails(new org.tron.model.Error().message(e.getMessage()));
+      error.setDetails(JSON.parseObject("{\"txID\":\"" + txID + "\"}"));
       returnString = JSON.toJSONString(error);
       return Pair.of(500, returnString);
     }
@@ -445,7 +447,7 @@ public class BlockApiController implements BlockApi {
     if (reply != null) {
       energyFee = reply.getReceipt().getEnergyFee();
       netFee = reply.getReceipt().getNetFee();
-      fee = reply.getFee();
+      fee = -reply.getFee();
     }
     //1. set tx
     org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
