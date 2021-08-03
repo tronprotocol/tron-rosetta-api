@@ -148,8 +148,11 @@ public class AccountApiController implements AccountApi {
       }
 
       String address = accountIdentifier.getAddress();
-      AccountCapsule accountCapsule =
-          accountStore.get(Commons.decodeFromBase58Check(address));
+      byte[] addressBytes = Commons.decodeFromBase58Check(address);
+      if (ArrayUtils.isEmpty(addressBytes)) {
+        throw new AccountException();
+      }
+      AccountCapsule accountCapsule = accountStore.get(addressBytes);
       String balance = String.valueOf(accountCapsule.getBalance());
       Amount amount = new Amount();
       amount.value(balance)
