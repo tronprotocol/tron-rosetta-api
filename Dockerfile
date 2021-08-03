@@ -7,8 +7,8 @@ ENV LOG_DIR="/logs"
 
 ENV NET_TYPE="mainnet"
 
-ENV XMS="16G"
-ENV XMX="16G"
+ENV XMS="10G"
+ENV XMX="10G"
 ENV JVM_OPTIONS="-Xms$XMS -Xmx$XMX -XX:NewRatio=7 \
 -XX:+UseConcMarkSweepGC -XX:+PrintGCDetails -Xloggc:./logs/gc.log \
 -XX:+PrintGCDateStamps -XX:+CMSParallelRemarkEnabled -XX:ReservedCodeCacheSize=256m \
