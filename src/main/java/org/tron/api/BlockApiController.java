@@ -354,7 +354,7 @@ public class BlockApiController implements BlockApi {
   private List<TransactionBalanceTrace.Operation> removeBlackHole(List<TransactionBalanceTrace.Operation> operations){
     List<TransactionBalanceTrace.Operation> result = new LinkedList<>();
     for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
-      if (op.getAddress().toByteArray().equals(chainBaseManager.getAccountStore().getBlackholeAddress())) {
+      if (Arrays.equals(op.getAddress().toByteArray(),chainBaseManager.getAccountStore().getBlackholeAddress())) {
         continue;
       }
       result.add(op);
@@ -494,13 +494,13 @@ public class BlockApiController implements BlockApi {
         transactionBalanceTrace.getType().equals(ContractType.MarketCancelOrderContract.name())) {
       feeOperationCount = 0;
     }
-    int fee = 0;
+    long fee = 0;
     String feeAddress = "";
     for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
       long index = op.getOperationIdentifier();
       if (index < feeOperationCount) {
         fee += op.getAmount();
-        if (feeAddress.equals("")) {
+        if ("".equals(feeAddress)) {
           feeAddress = encode58Check(op.getAddress().toByteArray());
         }
         continue;
