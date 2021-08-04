@@ -413,7 +413,7 @@ public class BlockApiController implements BlockApi {
       if (index < feeOperationCount) {
         continue;
       }
-      index = index - feeOperationCount;
+      index = rstTx.getOperations().size();
       org.tron.model.Operation operation = new org.tron.model.Operation()
           .operationIdentifier(new OperationIdentifier().index(index))
           .type(transactionBalanceTrace.getType())
