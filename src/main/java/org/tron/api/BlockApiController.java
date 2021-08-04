@@ -505,7 +505,7 @@ public class BlockApiController implements BlockApi {
         }
         continue;
       }
-      index = index - feeOperationCount;
+      index = rstTx.getOperations().size();
       org.tron.model.Operation operation = new org.tron.model.Operation()
           .operationIdentifier(new OperationIdentifier().index(index))
           .type(transactionBalanceTrace.getType())
