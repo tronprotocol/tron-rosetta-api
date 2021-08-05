@@ -371,7 +371,7 @@ public class BlockApiController implements BlockApi {
     }
     if (transactionBalanceTrace.getType().equals(ContractType.CreateSmartContract.name()) ||
         transactionBalanceTrace.getType().equals(ContractType.TriggerSmartContract.name())) {
-      return toRosettaVmTx(transactionBalanceTrace);
+      return toRosettaVmTx(transactionBalanceTrace,transaction);
     }
     return toRosettaOtherTx(transactionBalanceTrace,transaction);
   }
@@ -415,7 +415,7 @@ public class BlockApiController implements BlockApi {
           .operationIdentifier(new OperationIdentifier().index(0L))
           .type("TransferContract")
           .status(transactionBalanceTrace.getStatus())
-          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(transferContract.getAmount())))
+          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(-transferContract.getAmount())))
           .account(new AccountIdentifier().address(encode58Check(transferContract.getOwnerAddress().toByteArray()))));
       rstTx.addOperationsItem(new org.tron.model.Operation()
           .operationIdentifier(new OperationIdentifier().index(1L))
@@ -436,16 +436,18 @@ public class BlockApiController implements BlockApi {
     return rstTx;
   }
 
-  private org.tron.model.Transaction toRosettaVmTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace){
+  private org.tron.model.Transaction toRosettaVmTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace,
+                                                   TransactionCapsule transaction){
     long energyFee = 0;
     long netFee = 0;
+    long multiSignFee = 0;
     long fee = 0;
     String txid = ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray());
     Protocol.TransactionInfo reply = wallet.getTransactionInfoById(transactionBalanceTrace.getTransactionIdentifier());
     if (reply != null) {
       energyFee = reply.getReceipt().getEnergyFee();
       netFee = reply.getReceipt().getNetFee();
-      fee = -reply.getFee();
+      multiSignFee = reply.getFee()- energyFee - netFee - transaction.getInstance().getRet(0).getFee();
     }
     //1. set tx
     org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
@@ -456,8 +458,22 @@ public class BlockApiController implements BlockApi {
 
     String feeAddress = "";
     for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
-      if (op.getAmount() == -1 * energyFee || op.getAmount() == -1 * netFee) {
+      if (op.getAmount() == -1 * energyFee) {
         feeAddress = encode58Check(op.getAddress().toByteArray());
+        fee += op.getAmount();
+        energyFee = 0;
+        continue;
+      }
+      if (op.getAmount() == -1 * netFee) {
+        feeAddress = encode58Check(op.getAddress().toByteArray());
+        fee += op.getAmount();
+        netFee = 0;
+        continue;
+      }
+      if (op.getAmount() == -1 * multiSignFee) {
+        feeAddress = encode58Check(op.getAddress().toByteArray());
+        fee += op.getAmount();
+        multiSignFee = 0;
         continue;
       }
       long curIndex = rstTx.getOperations().size();
