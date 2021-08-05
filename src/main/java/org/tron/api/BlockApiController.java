@@ -367,7 +367,7 @@ public class BlockApiController implements BlockApi {
       return toRosettaGenesisTx(transactionBalanceTrace);
     }
     if (transactionBalanceTrace.getType().equals(ContractType.TransferContract.name())) {
-      return toRosettaTransferTx(transactionBalanceTrace);
+      return toRosettaTransferTx(transactionBalanceTrace,transaction);
     }
     if (transactionBalanceTrace.getType().equals(ContractType.CreateSmartContract.name()) ||
         transactionBalanceTrace.getType().equals(ContractType.TriggerSmartContract.name())) {
@@ -397,43 +397,41 @@ public class BlockApiController implements BlockApi {
     return rstTx;
   }
 
-  private org.tron.model.Transaction toRosettaTransferTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace){
+  private org.tron.model.Transaction toRosettaTransferTx(BalanceContract.TransactionBalanceTrace transactionBalanceTrace,TransactionCapsule transaction){
+    Protocol.TransactionInfo reply = wallet.getTransactionInfoById(transactionBalanceTrace.getTransactionIdentifier());
+    long fee = 0;
+    if (reply != null) {
+      fee = -reply.getFee();
+    }
     //1. set tx
     org.tron.model.Transaction rstTx = new org.tron.model.Transaction()
         .transactionIdentifier(new org.tron.model.TransactionIdentifier()
             .hash(ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray())));
-    //2. set operations
-    int feeOperationCount = 0;
-    List<BalanceContract.TransactionBalanceTrace.Operation> operations = removeBlackHole(transactionBalanceTrace.getOperationList());
-    if (operations.size() > 2) {
-      feeOperationCount = operations.size()-2;
-    }
-    for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
-      long index = op.getOperationIdentifier();
-      if (index < feeOperationCount) {
-        continue;
-      }
-      index = rstTx.getOperations().size();
-      org.tron.model.Operation operation = new org.tron.model.Operation()
-          .operationIdentifier(new OperationIdentifier().index(index))
-          .type(transactionBalanceTrace.getType())
-          .status(transactionBalanceTrace.getStatus())
-          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(op.getAmount())))
-          .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray())));
 
-      if (1 == index % 2) {
-        operation.addRelatedOperationsItem(new OperationIdentifier().index(index - 1));
-      }
-      rstTx.addOperationsItem(operation);
+    //2. set operations
+    BalanceContract.TransferContract transferContract = transaction.getTransferContract();
+    if (transferContract!=null) {
+      rstTx.addOperationsItem(new org.tron.model.Operation()
+          .operationIdentifier(new OperationIdentifier().index(0L))
+          .type("TransferContract")
+          .status(transactionBalanceTrace.getStatus())
+          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(transferContract.getAmount())))
+          .account(new AccountIdentifier().address(encode58Check(transferContract.getOwnerAddress().toByteArray()))));
+      rstTx.addOperationsItem(new org.tron.model.Operation()
+          .operationIdentifier(new OperationIdentifier().index(1L))
+          .addRelatedOperationsItem(new OperationIdentifier().index(0L))
+          .type("TransferContract")
+          .status(transactionBalanceTrace.getStatus())
+          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(transferContract.getAmount())))
+          .account(new AccountIdentifier().address(encode58Check(transferContract.getToAddress().toByteArray()))));
     }
-    if (feeOperationCount != 0) {
-      BalanceContract.TransactionBalanceTrace.Operation op = operations.get(0);
+    if (fee != 0) {
       rstTx.addOperationsItem(new org.tron.model.Operation()
           .operationIdentifier(new OperationIdentifier().index((long)(rstTx.getOperations().size())))
           .type("Fee")
           .status(transactionBalanceTrace.getStatus())
-          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(op.getAmount())))
-          .account(new AccountIdentifier().address(encode58Check(op.getAddress().toByteArray()))));
+          .amount(new Amount().currency(Default.CURRENCY).value(Long.toString(fee)))
+          .account(new AccountIdentifier().address(encode58Check(transferContract.getOwnerAddress().toByteArray()))));
     }
     return rstTx;
   }
