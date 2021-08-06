@@ -351,10 +351,13 @@ public class BlockApiController implements BlockApi {
   }
 
 
-  private List<TransactionBalanceTrace.Operation> removeBlackHole(List<TransactionBalanceTrace.Operation> operations){
+  private List<TransactionBalanceTrace.Operation> removeUselessOperations(List<TransactionBalanceTrace.Operation> operations){
     List<TransactionBalanceTrace.Operation> result = new LinkedList<>();
     for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
       if (Arrays.equals(op.getAddress().toByteArray(),chainBaseManager.getAccountStore().getBlackholeAddress())) {
+        continue;
+      }
+      if (op.getAmount()==0) {
         continue;
       }
       result.add(op);
@@ -454,23 +457,23 @@ public class BlockApiController implements BlockApi {
         .transactionIdentifier(new org.tron.model.TransactionIdentifier()
             .hash(ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray())));
     //2. set operations
-    List<BalanceContract.TransactionBalanceTrace.Operation> operations = removeBlackHole(transactionBalanceTrace.getOperationList());
+    List<BalanceContract.TransactionBalanceTrace.Operation> operations = removeUselessOperations(transactionBalanceTrace.getOperationList());
 
     String feeAddress = "";
     for (BalanceContract.TransactionBalanceTrace.Operation op : operations) {
-      if (op.getAmount() == -1 * energyFee) {
+      if (energyFee != 0 && op.getAmount() == -1 * energyFee) {
         feeAddress = encode58Check(op.getAddress().toByteArray());
         fee += op.getAmount();
         energyFee = 0;
         continue;
       }
-      if (op.getAmount() == -1 * netFee) {
+      if (netFee != 0 && op.getAmount() == -1 * netFee) {
         feeAddress = encode58Check(op.getAddress().toByteArray());
         fee += op.getAmount();
         netFee = 0;
         continue;
       }
-      if (op.getAmount() == -1 * multiSignFee) {
+      if (multiSignFee != 0 && op.getAmount() == -1 * multiSignFee) {
         feeAddress = encode58Check(op.getAddress().toByteArray());
         fee += op.getAmount();
         multiSignFee = 0;
@@ -501,7 +504,7 @@ public class BlockApiController implements BlockApi {
         .transactionIdentifier(new org.tron.model.TransactionIdentifier()
             .hash(ByteArray.toHexString(transactionBalanceTrace.getTransactionIdentifier().toByteArray())));
 
-    List<BalanceContract.TransactionBalanceTrace.Operation> operations = removeBlackHole(transactionBalanceTrace.getOperationList());
+    List<BalanceContract.TransactionBalanceTrace.Operation> operations = removeUselessOperations(transactionBalanceTrace.getOperationList());
     int transactionCount = getTransOperationCount(transaction.getInstance().getRawData().getContract(0));
     int feeOperationCount = operations.size() - transactionCount;
     if (transactionBalanceTrace.getType().equals(ContractType.MarketSellAssetContract.name()) ||
