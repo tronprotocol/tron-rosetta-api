@@ -18,4 +18,4 @@ if [[ "offline" == $RUN_MODE ]]; then
   CONFIG_FILE="conf/offline.conf"
 fi
 
-java $JVM_OPTIONS -jar $JAR_NAME -d $DATA_DIR -c $CONFIG_FILE $TRON_OPTIONS
+exec java $JVM_OPTIONS -jar $JAR_NAME -d $DATA_DIR -c $CONFIG_FILE $TRON_OPTIONS
