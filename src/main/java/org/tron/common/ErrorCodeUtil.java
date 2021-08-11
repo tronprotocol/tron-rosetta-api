@@ -60,10 +60,13 @@ public class ErrorCodeUtil {
 				break;
 			case TRANSACTION_EXPIRATION_ERROR:
 				error = Constant.newError(Constant.TRANSACTION_EXPIRATION_FAILED);
+				break;
 			case SERVER_BUSY:
 				error = Constant.newError(Constant.SERVER_BUSY_FAILED);
+				break;
 			case NO_CONNECTION:
 				error = Constant.newError(Constant.NO_CONNECTION_FAILED);
+				break;
 			case NOT_ENOUGH_EFFECTIVE_CONNECTION:
 				error = Constant.newError(Constant.NOT_ENOUGH_EFFECTIVE_CONNECTION_FAILED);
 				break;
