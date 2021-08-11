@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.security.auth.login.AccountException;
 import javax.validation.Valid;
 
 import org.apache.commons.lang3.StringUtils;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.tron.common.BandwidthProcessor;
 import org.tron.common.Default;
+import org.tron.common.ErrorCodeUtil;
 import org.tron.common.crypto.ECKey;
 import org.tron.core.ChainBaseManager;
 import org.tron.core.capsule.TransactionResultCapsule;
@@ -265,21 +267,36 @@ public class ConstructionApiController implements ConstructionApi {
       consumes = {"application/json"},
       method = RequestMethod.POST)
   public ResponseEntity<ConstructionPreprocessResponse> constructionPreprocess(@ApiParam(value = "", required = true) @Valid @RequestBody ConstructionPreprocessRequest constructionPreprocessRequest) {
-    if (getRequest().isPresent()) {
+		AtomicInteger statusCode = new AtomicInteger(HttpStatus.OK.value());
+  	String returnString = "";
+  	if (getRequest().isPresent()) {
       for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           validatePreprocessRequest(constructionPreprocessRequest);
-          Pair<String, TransactionCapsule> pair = buildTransaction(constructionPreprocessRequest.getOperations(),null);
-          TransactionCapsule transaction = pair.getRight();
-          ConstructionPreprocessResponse response = new ConstructionPreprocessResponse();
-          Map<String, Object> options = new HashMap<>();
-          options.put("unsigned_transaction", ByteArray.toHexString(transaction.getInstance().toByteArray()));
-          response.options(options);
-          return new ResponseEntity<>(response, HttpStatus.OK);
+          try {
+						Pair<String, TransactionCapsule> pair = buildTransaction(constructionPreprocessRequest.getOperations(),null);
+						TransactionCapsule transaction = pair.getRight();
+						ConstructionPreprocessResponse response = new ConstructionPreprocessResponse();
+						Map<String, Object> options = new HashMap<>();
+						options.put("unsigned_transaction", ByteArray.toHexString(transaction.getInstance().toByteArray()));
+						response.options(options);
+						return new ResponseEntity<>(response, HttpStatus.OK);
+					} catch (AccountException e) {
+						Error error = Constant.newError(Constant.ACCOUNT_IS_NOT_EXISTS)
+								.retriable(false)
+								.details(JSON.parseObject("{\"message\":\"Invalid Address\"}"));
+						try {
+							returnString = objectMapper.writeValueAsString(error);
+						} catch (JsonProcessingException ex) {
+							//ex.printStackTrace();
+						}
+					}
+          ApiUtil.setExampleResponse(request, "application/json", returnString);
+          break;
         }
       }
     }
-    return new ResponseEntity<>(HttpStatus.valueOf(200));
+    return new ResponseEntity<>(HttpStatus.valueOf(statusCode.get()));
   }
 
   public void validatePreprocessRequest(ConstructionPreprocessRequest constructionPreprocessRequest) {
@@ -512,22 +529,30 @@ public class ConstructionApiController implements ConstructionApi {
                     ByteArray.fromHexString(constructionSubmitRequest.getSignedTransaction()));
             transactionSigned.resetResult();
             GrpcAPI.Return result = wallet.broadcastTransaction(transactionSigned.getInstance());
-            transactionHash = transactionSigned.getTransactionId().toString();
-            if (result.getResult()) {
-              TransactionIdentifierResponse transactionIdentifierResponse = new TransactionIdentifierResponse();
-              TransactionIdentifier transactionIdentifier = new TransactionIdentifier();
-              transactionIdentifier.setHash(transactionHash);
-              transactionIdentifierResponse.setTransactionIdentifier(transactionIdentifier);
-              returnString = objectMapper.writeValueAsString(transactionIdentifierResponse);
-            } else {
-              statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-              error = Constant.newError(Constant.BROADCAST_TRANSACTION_FAILED);
-              error.details(JSON.parseObject("{\"txID\":\"" + transactionHash + "\"}")).message(result.getMessage().toStringUtf8());
-              if (result.getCodeValue() == GrpcAPI.Return.response_code.DUP_TRANSACTION_ERROR.getNumber()) {
-                error.message("Dup transaction");
-              }
-              returnString = objectMapper.writeValueAsString(error);
-            }
+						transactionHash = transactionSigned.getTransactionId().toString();
+						if (result.getResult()) {
+							TransactionIdentifierResponse transactionIdentifierResponse = new TransactionIdentifierResponse();
+							TransactionIdentifier transactionIdentifier = new TransactionIdentifier();
+							transactionIdentifier.setHash(transactionHash);
+							transactionIdentifierResponse.setTransactionIdentifier(transactionIdentifier);
+							returnString = objectMapper.writeValueAsString(transactionIdentifierResponse);
+						} else if (ErrorCodeUtil.containsTronErrorCode(result.getCode().getNumber())) {
+							statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
+							error = ErrorCodeUtil.getTronError(result.getCode().getNumber());
+							error.details(JSON.parseObject("{\"txID\":\"" + transactionHash + "\"}")).message(result.getMessage().toStringUtf8());
+							if (result.getCodeValue() == GrpcAPI.Return.response_code.DUP_TRANSACTION_ERROR.getNumber()) {
+								error.message("Dup transaction");
+							}
+							returnString = objectMapper.writeValueAsString(error);
+						} else {
+							statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
+							error = Constant.newError(Constant.BROADCAST_TRANSACTION_FAILED);
+							error.details(JSON.parseObject("{\"txID\":\"" + transactionHash + "\"}")).message(result.getMessage().toStringUtf8());
+							if (result.getCodeValue() == GrpcAPI.Return.response_code.DUP_TRANSACTION_ERROR.getNumber()) {
+								error.message("Dup transaction");
+							}
+							returnString = objectMapper.writeValueAsString(error);
+						}
           } catch (BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
@@ -565,25 +590,40 @@ public class ConstructionApiController implements ConstructionApi {
       @ApiParam(value = "" ,required=true )
       @Valid @RequestBody
           ConstructionPayloadsRequest constructionPayloadsRequest) {
+		AtomicInteger statusCode = new AtomicInteger(HttpStatus.OK.value());
+		String returnString = "";
     if (getRequest().isPresent()) {
       for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           validatePayloadsRequest(constructionPayloadsRequest);
-          Pair<String, TransactionCapsule> pair = buildTransaction(constructionPayloadsRequest.getOperations(),constructionPayloadsRequest.getMetadata());
-          TransactionCapsule transaction = pair.getRight();
-          String owner = pair.getLeft();
-          SigningPayload payloadItem = new SigningPayload();
-          payloadItem.address(owner)
-              .hexBytes(ByteArray.toHexString(transaction.getTransactionId().getBytes()))
-              .signatureType(SignatureType.ECDSA_RECOVERY);
-          ConstructionPayloadsResponse response = new ConstructionPayloadsResponse();
-          response.unsignedTransaction(ByteArray.toHexString(transaction.getInstance().toByteArray()))
-              .addPayloadsItem(payloadItem);
-          return new ResponseEntity<>(response, HttpStatus.OK);
+          try {
+						Pair<String, TransactionCapsule> pair = buildTransaction(constructionPayloadsRequest.getOperations(),constructionPayloadsRequest.getMetadata());
+						TransactionCapsule transaction = pair.getRight();
+						String owner = pair.getLeft();
+						SigningPayload payloadItem = new SigningPayload();
+						payloadItem.address(owner)
+								.hexBytes(ByteArray.toHexString(transaction.getTransactionId().getBytes()))
+								.signatureType(SignatureType.ECDSA_RECOVERY);
+						ConstructionPayloadsResponse response = new ConstructionPayloadsResponse();
+						response.unsignedTransaction(ByteArray.toHexString(transaction.getInstance().toByteArray()))
+								.addPayloadsItem(payloadItem);
+						return new ResponseEntity<>(response, HttpStatus.OK);
+					} catch (AccountException e){
+						Error error = Constant.newError(Constant.ACCOUNT_IS_NOT_EXISTS)
+								.retriable(false)
+								.details(JSON.parseObject("{\"message\":\"Invalid Address\"}"));
+						try {
+							returnString = objectMapper.writeValueAsString(error);
+						} catch (JsonProcessingException ex) {
+							//ex.printStackTrace();
+						}
+					}
+					ApiUtil.setExampleResponse(request, "application/json", returnString);
+					break;
         }
       }
     }
-    return new ResponseEntity<>(HttpStatus.valueOf(200));
+    return new ResponseEntity<>(HttpStatus.valueOf(statusCode.get()));
 
   }
 
@@ -591,7 +631,7 @@ public class ConstructionApiController implements ConstructionApi {
 
   }
 
-  public Pair<String, TransactionCapsule> buildTransaction(List<Operation> operations, Object metaObj) {
+  public Pair<String, TransactionCapsule> buildTransaction(List<Operation> operations, Object metaObj) throws AccountException {
     Operation from, to;
     if (StringUtils.isNotEmpty(operations.get(0).getAmount().getValue())
         && operations.get(0).getAmount().getValue().startsWith("-")) {
@@ -604,12 +644,18 @@ public class ConstructionApiController implements ConstructionApi {
     }
     BalanceContract.TransferContract.Builder builder = BalanceContract.TransferContract
         .newBuilder();
-    String src = from.getAccount().getAddress();
-    ByteString bsOwner = ByteString.copyFrom(Commons.decodeFromBase58Check(src));
+		String src = from.getAccount().getAddress();
+		byte[] fromBase58Check = Commons.decodeFromBase58Check(src);
+		String dest = to.getAccount().getAddress();
+		byte[] toBase58Check = Commons.decodeFromBase58Check(dest);
+		if (null == fromBase58Check || null == toBase58Check) {
+			throw new AccountException();
+		}
+
+    ByteString bsOwner = ByteString.copyFrom(fromBase58Check);
     builder.setOwnerAddress(bsOwner);
 
-    String dest = to.getAccount().getAddress();
-    ByteString bsTo = ByteString.copyFrom(Commons.decodeFromBase58Check(dest));
+    ByteString bsTo = ByteString.copyFrom(toBase58Check);
     builder.setToAddress(bsTo);
 
     builder.setAmount(Long.parseLong(to.getAmount().getValue()));
