@@ -54,28 +54,28 @@ public class Constant {
   public final static Error ACCOUNT_IS_NOT_EXISTS =
       new Error().code(204).message("This account does not exists.").retriable(false).details(null);
 
-	public static Error SIGERROR_FAILED =
-			new Error().code(251).message("validate signature error").retriable(false).details(null);
-	public static Error CONTRACT_VALIDATE_ERROR_FAILED =
-			new Error().code(252).message("contract validate error").retriable(false).details(null);
-	public static Error CONTRACT_EXE_ERROR_FAILED =
-			new Error().code(253).message("contract execute error").retriable(false).details(null);
-	public static Error BANDWITH_ERROR_FAILED =
-			new Error().code(254).message("AccountResourceInsufficient error").retriable(false).details(null);
-	public static Error DUP_TRANSACTION_ERROR_FAILED =
-			new Error().code(255).message("dup transaction").retriable(false).details(null);
-	public static Error TAPOS_ERROR_FAILED =
-			new Error().code(256).message("Tapos check error").retriable(false).details(null);
-	public static Error TOO_BIG_TRANSACTION_ERROR_FAILED =
-			new Error().code(257).message("transaction size is too big").retriable(false).details(null);
-	public static Error TRANSACTION_EXPIRATION_FAILED =
-			new Error().code(258).message("transaction expired").retriable(false).details(null);
-	public static Error SERVER_BUSY_FAILED =
-			new Error().code(259).message("server busy").retriable(false).details(null);
-	public static Error NO_CONNECTION_FAILED =
-			new Error().code(260).message("no connection").retriable(false).details(null);
-	public static Error NOT_ENOUGH_EFFECTIVE_CONNECTION_FAILED =
-			new Error().code(261).message("not enough effective connection").retriable(false).details(null);
+  public static Error SIGERROR_FAILED =
+      new Error().code(251).message("validate signature error").retriable(false).details(null);
+  public static Error CONTRACT_VALIDATE_ERROR_FAILED =
+      new Error().code(252).message("contract validate error").retriable(false).details(null);
+  public static Error CONTRACT_EXE_ERROR_FAILED =
+      new Error().code(253).message("contract execute error").retriable(false).details(null);
+  public static Error BANDWITH_ERROR_FAILED =
+      new Error().code(254).message("AccountResourceInsufficient error").retriable(false).details(null);
+  public static Error DUP_TRANSACTION_ERROR_FAILED =
+      new Error().code(255).message("dup transaction").retriable(false).details(null);
+  public static Error TAPOS_ERROR_FAILED =
+      new Error().code(256).message("Tapos check error").retriable(false).details(null);
+  public static Error TOO_BIG_TRANSACTION_ERROR_FAILED =
+      new Error().code(257).message("transaction size is too big").retriable(false).details(null);
+  public static Error TRANSACTION_EXPIRATION_FAILED =
+      new Error().code(258).message("transaction expired").retriable(false).details(null);
+  public static Error SERVER_BUSY_FAILED =
+      new Error().code(259).message("server busy").retriable(false).details(null);
+  public static Error NO_CONNECTION_FAILED =
+      new Error().code(260).message("no connection").retriable(false).details(null);
+  public static Error NOT_ENOUGH_EFFECTIVE_CONNECTION_FAILED =
+      new Error().code(261).message("not enough effective connection").retriable(false).details(null);
 
 
   public static Error newError(Error error) {
@@ -132,16 +132,16 @@ public class Constant {
     SERVER_EXCEPTION_CATCH,
     BLOCK_IS_NOT_EXISTS,
     ACCOUNT_IS_NOT_EXISTS,
-		SIGERROR_FAILED,
-		CONTRACT_VALIDATE_ERROR_FAILED,
-		CONTRACT_EXE_ERROR_FAILED,
-		BANDWITH_ERROR_FAILED,
-		DUP_TRANSACTION_ERROR_FAILED,
-		TAPOS_ERROR_FAILED,
-		TOO_BIG_TRANSACTION_ERROR_FAILED,
-		TRANSACTION_EXPIRATION_FAILED,
-		SERVER_BUSY_FAILED,
-		NO_CONNECTION_FAILED,
-		NOT_ENOUGH_EFFECTIVE_CONNECTION_FAILED
-  );
+    SIGERROR_FAILED,
+    CONTRACT_VALIDATE_ERROR_FAILED,
+    CONTRACT_EXE_ERROR_FAILED,
+    BANDWITH_ERROR_FAILED,
+    DUP_TRANSACTION_ERROR_FAILED,
+    TAPOS_ERROR_FAILED,
+    TOO_BIG_TRANSACTION_ERROR_FAILED,
+    TRANSACTION_EXPIRATION_FAILED,
+    SERVER_BUSY_FAILED,
+    NO_CONNECTION_FAILED,
+    NOT_ENOUGH_EFFECTIVE_CONNECTION_FAILED
+);
 }

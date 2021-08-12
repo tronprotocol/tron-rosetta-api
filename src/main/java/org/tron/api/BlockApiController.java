@@ -594,7 +594,7 @@ public class BlockApiController implements BlockApi {
     transactionCountMap.put(ContractType.FreezeBalanceContract,1);
     transactionCountMap.put(ContractType.UnfreezeBalanceContract,1);
     transactionCountMap.put(ContractType.WithdrawBalanceContract,1);
-		transactionCountMap.put(ContractType.ParticipateAssetIssueContract,2);
+    transactionCountMap.put(ContractType.ParticipateAssetIssueContract, 2);
     return transactionCountMap.get(contract.getType())==null ?
         0 : transactionCountMap.get(contract.getType());
   }

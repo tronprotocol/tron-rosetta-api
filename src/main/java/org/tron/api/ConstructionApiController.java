@@ -267,30 +267,30 @@ public class ConstructionApiController implements ConstructionApi {
       consumes = {"application/json"},
       method = RequestMethod.POST)
   public ResponseEntity<ConstructionPreprocessResponse> constructionPreprocess(@ApiParam(value = "", required = true) @Valid @RequestBody ConstructionPreprocessRequest constructionPreprocessRequest) {
-		AtomicInteger statusCode = new AtomicInteger(HttpStatus.OK.value());
-  	String returnString = "";
-  	if (getRequest().isPresent()) {
-      for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {
+    AtomicInteger statusCode = new AtomicInteger(HttpStatus.OK.value());
+    String returnString = "";
+    if (getRequest().isPresent()) {
+      for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           validatePreprocessRequest(constructionPreprocessRequest);
           try {
-						Pair<String, TransactionCapsule> pair = buildTransaction(constructionPreprocessRequest.getOperations(),null);
-						TransactionCapsule transaction = pair.getRight();
-						ConstructionPreprocessResponse response = new ConstructionPreprocessResponse();
-						Map<String, Object> options = new HashMap<>();
-						options.put("unsigned_transaction", ByteArray.toHexString(transaction.getInstance().toByteArray()));
-						response.options(options);
-						return new ResponseEntity<>(response, HttpStatus.OK);
-					} catch (AccountException e) {
-						Error error = Constant.newError(Constant.ACCOUNT_IS_NOT_EXISTS)
-								.retriable(false)
-								.details(JSON.parseObject("{\"message\":\"Invalid Address\"}"));
-						try {
-							returnString = objectMapper.writeValueAsString(error);
-						} catch (JsonProcessingException ex) {
-							//ex.printStackTrace();
-						}
-					}
+            Pair<String, TransactionCapsule> pair = buildTransaction(constructionPreprocessRequest.getOperations(), null);
+            TransactionCapsule transaction = pair.getRight();
+            ConstructionPreprocessResponse response = new ConstructionPreprocessResponse();
+            Map<String, Object> options = new HashMap<>();
+            options.put("unsigned_transaction", ByteArray.toHexString(transaction.getInstance().toByteArray()));
+            response.options(options);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+          } catch (AccountException e) {
+            Error error = Constant.newError(Constant.ACCOUNT_IS_NOT_EXISTS)
+                .retriable(false)
+                .details(JSON.parseObject("{\"message\":\"Invalid Address\"}"));
+            try {
+              returnString = objectMapper.writeValueAsString(error);
+            } catch (JsonProcessingException ex) {
+              //ex.printStackTrace();
+            }
+          }
           ApiUtil.setExampleResponse(request, "application/json", returnString);
           break;
         }
@@ -529,30 +529,30 @@ public class ConstructionApiController implements ConstructionApi {
                     ByteArray.fromHexString(constructionSubmitRequest.getSignedTransaction()));
             transactionSigned.resetResult();
             GrpcAPI.Return result = wallet.broadcastTransaction(transactionSigned.getInstance());
-						transactionHash = transactionSigned.getTransactionId().toString();
-						if (result.getResult()) {
-							TransactionIdentifierResponse transactionIdentifierResponse = new TransactionIdentifierResponse();
-							TransactionIdentifier transactionIdentifier = new TransactionIdentifier();
-							transactionIdentifier.setHash(transactionHash);
-							transactionIdentifierResponse.setTransactionIdentifier(transactionIdentifier);
-							returnString = objectMapper.writeValueAsString(transactionIdentifierResponse);
-						} else if (ErrorCodeUtil.containsTronErrorCode(result.getCode().getNumber())) {
-							statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-							error = ErrorCodeUtil.getTronError(result.getCode().getNumber());
-							error.details(JSON.parseObject("{\"txID\":\"" + transactionHash + "\"}")).message(result.getMessage().toStringUtf8());
-							if (result.getCodeValue() == GrpcAPI.Return.response_code.DUP_TRANSACTION_ERROR.getNumber()) {
-								error.message("Dup transaction");
-							}
-							returnString = objectMapper.writeValueAsString(error);
-						} else {
-							statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-							error = Constant.newError(Constant.BROADCAST_TRANSACTION_FAILED);
-							error.details(JSON.parseObject("{\"txID\":\"" + transactionHash + "\"}")).message(result.getMessage().toStringUtf8());
-							if (result.getCodeValue() == GrpcAPI.Return.response_code.DUP_TRANSACTION_ERROR.getNumber()) {
-								error.message("Dup transaction");
-							}
-							returnString = objectMapper.writeValueAsString(error);
-						}
+            transactionHash = transactionSigned.getTransactionId().toString();
+            if (result.getResult()) {
+              TransactionIdentifierResponse transactionIdentifierResponse = new TransactionIdentifierResponse();
+              TransactionIdentifier transactionIdentifier = new TransactionIdentifier();
+              transactionIdentifier.setHash(transactionHash);
+              transactionIdentifierResponse.setTransactionIdentifier(transactionIdentifier);
+              returnString = objectMapper.writeValueAsString(transactionIdentifierResponse);
+            } else if (ErrorCodeUtil.containsTronErrorCode(result.getCode().getNumber())) {
+              statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
+              error = ErrorCodeUtil.getTronError(result.getCode().getNumber());
+              error.details(JSON.parseObject("{\"txID\":\"" + transactionHash + "\"}")).message(result.getMessage().toStringUtf8());
+              if (result.getCodeValue() == GrpcAPI.Return.response_code.DUP_TRANSACTION_ERROR.getNumber()) {
+                error.message("Dup transaction");
+              }
+              returnString = objectMapper.writeValueAsString(error);
+            } else {
+              statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
+              error = Constant.newError(Constant.BROADCAST_TRANSACTION_FAILED);
+              error.details(JSON.parseObject("{\"txID\":\"" + transactionHash + "\"}")).message(result.getMessage().toStringUtf8());
+              if (result.getCodeValue() == GrpcAPI.Return.response_code.DUP_TRANSACTION_ERROR.getNumber()) {
+                error.message("Dup transaction");
+              }
+              returnString = objectMapper.writeValueAsString(error);
+            }
           } catch (BadItemException | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
@@ -590,36 +590,36 @@ public class ConstructionApiController implements ConstructionApi {
       @ApiParam(value = "" ,required=true )
       @Valid @RequestBody
           ConstructionPayloadsRequest constructionPayloadsRequest) {
-		AtomicInteger statusCode = new AtomicInteger(HttpStatus.OK.value());
-		String returnString = "";
+    AtomicInteger statusCode = new AtomicInteger(HttpStatus.OK.value());
+    String returnString = "";
     if (getRequest().isPresent()) {
-      for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {
+      for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
         if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
           validatePayloadsRequest(constructionPayloadsRequest);
           try {
-						Pair<String, TransactionCapsule> pair = buildTransaction(constructionPayloadsRequest.getOperations(),constructionPayloadsRequest.getMetadata());
-						TransactionCapsule transaction = pair.getRight();
-						String owner = pair.getLeft();
-						SigningPayload payloadItem = new SigningPayload();
-						payloadItem.address(owner)
-								.hexBytes(ByteArray.toHexString(transaction.getTransactionId().getBytes()))
-								.signatureType(SignatureType.ECDSA_RECOVERY);
-						ConstructionPayloadsResponse response = new ConstructionPayloadsResponse();
-						response.unsignedTransaction(ByteArray.toHexString(transaction.getInstance().toByteArray()))
-								.addPayloadsItem(payloadItem);
-						return new ResponseEntity<>(response, HttpStatus.OK);
-					} catch (AccountException e){
-						Error error = Constant.newError(Constant.ACCOUNT_IS_NOT_EXISTS)
-								.retriable(false)
-								.details(JSON.parseObject("{\"message\":\"Invalid Address\"}"));
-						try {
-							returnString = objectMapper.writeValueAsString(error);
-						} catch (JsonProcessingException ex) {
-							//ex.printStackTrace();
-						}
-					}
-					ApiUtil.setExampleResponse(request, "application/json", returnString);
-					break;
+            Pair<String, TransactionCapsule> pair = buildTransaction(constructionPayloadsRequest.getOperations(), constructionPayloadsRequest.getMetadata());
+            TransactionCapsule transaction = pair.getRight();
+            String owner = pair.getLeft();
+            SigningPayload payloadItem = new SigningPayload();
+            payloadItem.address(owner)
+                .hexBytes(ByteArray.toHexString(transaction.getTransactionId().getBytes()))
+                .signatureType(SignatureType.ECDSA_RECOVERY);
+            ConstructionPayloadsResponse response = new ConstructionPayloadsResponse();
+            response.unsignedTransaction(ByteArray.toHexString(transaction.getInstance().toByteArray()))
+                .addPayloadsItem(payloadItem);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+          } catch (AccountException e) {
+            Error error = Constant.newError(Constant.ACCOUNT_IS_NOT_EXISTS)
+                .retriable(false)
+                .details(JSON.parseObject("{\"message\":\"Invalid Address\"}"));
+            try {
+              returnString = objectMapper.writeValueAsString(error);
+            } catch (JsonProcessingException ex) {
+              //ex.printStackTrace();
+            }
+          }
+          ApiUtil.setExampleResponse(request, "application/json", returnString);
+          break;
         }
       }
     }
@@ -644,13 +644,13 @@ public class ConstructionApiController implements ConstructionApi {
     }
     BalanceContract.TransferContract.Builder builder = BalanceContract.TransferContract
         .newBuilder();
-		String src = from.getAccount().getAddress();
-		byte[] fromBase58Check = Commons.decodeFromBase58Check(src);
-		String dest = to.getAccount().getAddress();
-		byte[] toBase58Check = Commons.decodeFromBase58Check(dest);
-		if (null == fromBase58Check || null == toBase58Check) {
-			throw new AccountException();
-		}
+    String src = from.getAccount().getAddress();
+    byte[] fromBase58Check = Commons.decodeFromBase58Check(src);
+    String dest = to.getAccount().getAddress();
+    byte[] toBase58Check = Commons.decodeFromBase58Check(dest);
+    if (null == fromBase58Check || null == toBase58Check) {
+      throw new AccountException();
+    }
 
     ByteString bsOwner = ByteString.copyFrom(fromBase58Check);
     builder.setOwnerAddress(bsOwner);
