@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.ObjectUtils;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -153,6 +154,9 @@ public class AccountApiController implements AccountApi {
         throw new AccountException();
       }
       AccountCapsule accountCapsule = accountStore.get(addressBytes);
+      if (ObjectUtils.isEmpty(accountCapsule)){
+        throw new AccountException();
+      }
       String balance = String.valueOf(accountCapsule.getBalance());
       Amount amount = new Amount();
       amount.value(balance)
