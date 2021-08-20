@@ -24,6 +24,18 @@ $ cd tron-rosetta-api
 $ docker build -f Dockerfile.ubuntu -t tron-rosetta-api .
 ```
 
+## Base Images
+
+Dockerfile.centos7-jdk8 and Dockerfile.ubuntu-jdk8 illustrate how the base images are built.
+You can use the base images published on docker hub or build the base images yourself using the dockerfiles above.
+The jdk Linux x64 Compressed Archive can be found from [the official download page.](https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html)
+Compile the local base docker images:
+```
+$ docker build -f Dockerfile.centos7-jdk8 -t centosjdk8 .
+$ docker build -f Dockerfile.ubuntu-jdk8 -t ubuntujdk8 .
+```
+Replace the corresponding base image name in the rosettta Dockerfile with the local base image name centosjdk8 or ubuntujdk8.
+
 ## Node Deployment
 
 Start in Docker
