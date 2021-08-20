@@ -12,29 +12,97 @@ Execute the following command to download tron-rosetta-api:
 $ git clone https://github.com/tronprotocol/tron-rosetta-api.git
 ```
 
-Compile docker image and use MainNet configuration for the image by default:
+### Build rosetta image using tronprotocol base images
+
+You can use the base images published on docker hub. This is a more convenient way to build rosetta image.
+
+Build a centos rosetta docker image by default:
 ```
 $ cd tron-rosetta-api
 $ docker build -t --no-cache tron-rosetta-api .
 ```
 
-Compile a docker image from ubuntu:
+Or build a ubuntu rosetta docker image:
 ```
 $ cd tron-rosetta-api
 $ docker build -f Dockerfile.ubuntu -t tron-rosetta-api .
 ```
 
-## Base Images
+### Build rosetta image using self-build base images
 
-Dockerfile.centos7-jdk8 and Dockerfile.ubuntu-jdk8 illustrate how the base images are built.
-You can use the base images published on docker hub or build the base images yourself using the dockerfiles above.
-The jdk Linux x64 Compressed Archive can be found from [the official download page.](https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html)
-Compile the local base docker images:
+**Centos rosetta docker image**
+
+1. Build a centos base image
+
+Dockerfile.centos7-jdk8
 ```
-$ docker build -f Dockerfile.centos7-jdk8 -t centosjdk8 .
+FROM centos:centos7
+
+ADD jdk-8u301-linux-x64.tar.gz  /usr/local/
+ADD unzip-6.0-21.el7.x86_64.rpm /tmp
+RUN yum -y install git \
+  && yum clean all
+RUN rpm -ivh /tmp/unzip-6.0-21.el7.x86_64.rpm \
+  && rm /tmp/unzip-6.0-21.el7.x86_64.rpm
+ENV JAVA_HOME /usr/local/jdk1.8.0_301
+ENV CLASSPATH $JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+ENV PATH $PATH:$JAVA_HOME/bin
+```
+The jdk Linux x64 Compressed Archive can be found from [the official download page.](https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html)
+Build the base image:
+
+```
+$ docker build -f Dockerfile.centos7-jdk8 -t centos7jdk8 .
+```
+
+2. Build a centos rosetta image
+
+Replace the base image name in the Dockerfile
+
+```
+#FROM tronprotocol/centos7-jdk8
+FROM centos7jdk8
+```
+
+Build a centos rosetta docker image
+```
+$ docker build -t --no-cache tron-rosetta-api .
+```
+-------
+**Ubuntu rosetta docker image**
+
+1. Build a ubuntu base image
+
+Dockerfile.ubuntu-jdk8
+```
+FROM ubuntu:18.04
+
+WORKDIR /usr
+RUN mkdir /usr/local/java
+ADD jdk-8u301-linux-x64.tar.gz /usr/local/java/
+ENV JAVA_HOME /usr/local/java/jdk1.8.0_301
+ENV JRE_HOME $JAVA_HOME/jre
+ENV CLASSPATH $JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar:$JRE_HOME/lib:$CLASSPATH
+ENV PATH $JAVA_HOME/bin:$PATH
+```
+
+```
 $ docker build -f Dockerfile.ubuntu-jdk8 -t ubuntujdk8 .
 ```
-Replace the corresponding base image name in the rosettta Dockerfile with the local base image name centosjdk8 or ubuntujdk8.
+
+2. Build a ubuntu rosetta image
+
+Replace the base image name in the Dockerfile.ubuntu
+
+```
+#FROM tronprotocol/ubuntu18-jdk8
+FROM ubuntujdk8
+```
+
+Build a ubuntu rosetta docker image
+```
+$ docker build -f Dockerfile.ubuntu -t --no-cache tron-rosetta-api .
+```
 
 ## Node Deployment
 
