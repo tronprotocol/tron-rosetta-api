@@ -26,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.ObjectUtils;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -536,21 +537,19 @@ public class ConstructionApiController implements ConstructionApi {
               transactionIdentifier.setHash(transactionHash);
               transactionIdentifierResponse.setTransactionIdentifier(transactionIdentifier);
               returnString = objectMapper.writeValueAsString(transactionIdentifierResponse);
-            } else if (ErrorCodeUtil.containsTronErrorCode(result.getCode().getNumber())) {
-              statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-              error = ErrorCodeUtil.getTronError(result.getCode().getNumber());
-              error.details(JSON.parseObject("{\"txID\":\"" + transactionHash + "\"}")).message(result.getMessage().toStringUtf8());
-              if (result.getCodeValue() == GrpcAPI.Return.response_code.DUP_TRANSACTION_ERROR.getNumber()) {
-                error.message("Dup transaction");
-              }
-              returnString = objectMapper.writeValueAsString(error);
             } else {
-              statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
-              error = Constant.newError(Constant.BROADCAST_TRANSACTION_FAILED);
-              error.details(JSON.parseObject("{\"txID\":\"" + transactionHash + "\"}")).message(result.getMessage().toStringUtf8());
-              if (result.getCodeValue() == GrpcAPI.Return.response_code.DUP_TRANSACTION_ERROR.getNumber()) {
-                error.message("Dup transaction");
+              if (ErrorCodeUtil.containsTronErrorCode(result.getCode().getNumber())) {
+                statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
+                error = ErrorCodeUtil.getTronError(result.getCode().getNumber());
+              } else {
+                statusCode.set(HttpStatus.INTERNAL_SERVER_ERROR.value());
+                error = Constant.newError(Constant.BROADCAST_TRANSACTION_FAILED);
               }
+              String errMsg = ObjectUtils.isEmpty(result.getMessage()) ? "" : result.getMessage().toStringUtf8();
+              if (result.getCodeValue() == GrpcAPI.Return.response_code.DUP_TRANSACTION_ERROR.getNumber()) {
+                errMsg = "Dup transaction";
+              }
+              error.details(JSON.parseObject("{\"txID\":\"" + transactionHash + "\",\"error_msg\":\"" + errMsg + "\"}"));
               returnString = objectMapper.writeValueAsString(error);
             }
           } catch (BadItemException | JsonProcessingException e) {

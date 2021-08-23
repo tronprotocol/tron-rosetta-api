@@ -237,9 +237,8 @@ public class BlockApiController implements BlockApi {
           } catch (java.lang.Error | JsonProcessingException e) {
             e.printStackTrace();
             statusCode.set(500);
-            error.setCode(100);
-            error.setMessage("error:" + e.getMessage());
-            error.setRetriable(false);
+            error = Constant.newError(Constant.INTERNAL_SERVER_ERROR);
+            error.details(JSON.parseObject("{\"error_msg\":\"" + e.getMessage() + "\"}"));
             returnString = JSON.toJSONString(error);
           }
           ApiUtil.setExampleResponse(request, "application/json", returnString);
