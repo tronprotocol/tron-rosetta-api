@@ -161,8 +161,11 @@ public class NetworkApiController implements NetworkApi {
         NetworkStatusResponse networkStatusResponse = new NetworkStatusResponse();
         try {
             long nowBlock = chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum();
+            long headerBlock = chainBaseManager.getDynamicPropertiesStore().getLatestBlockHeaderNumber();
             //fix single node database transaction error, single node block consensus maybe too fast, the block hasn't been processed
-            nowBlock = (nowBlock == chainBaseManager.getDynamicPropertiesStore().getLatestBlockHeaderNumber() ? nowBlock - 1 : nowBlock);
+            if (nowBlock == headerBlock) {
+                nowBlock = nowBlock - 1;
+            }
             BlockCapsule currentBlock = chainBaseManager.getBlockByNum(nowBlock);
             networkStatusResponse.setCurrentBlockIdentifier(
                 new BlockIdentifier()
