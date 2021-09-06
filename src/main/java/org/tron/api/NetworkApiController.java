@@ -1,22 +1,18 @@
 package org.tron.api;
 
 import com.alibaba.fastjson.JSON;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
-import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import javax.validation.Valid;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -46,10 +42,10 @@ import org.tron.model.NetworkListResponse;
 import org.tron.model.NetworkOptionsResponse;
 import org.tron.model.NetworkRequest;
 import org.tron.model.NetworkStatusResponse;
-import org.tron.model.OperationStatus;
 import org.tron.model.Peer;
 import org.tron.model.Version;
 
+@Slf4j
 @Controller
 @RequestMapping("${openapi.rosetta.base-path:}")
 public class NetworkApiController implements NetworkApi {
@@ -164,14 +160,22 @@ public class NetworkApiController implements NetworkApi {
     public ResponseEntity<NetworkStatusResponse> networkStatus(@ApiParam(value = "" ,required=true )  @Valid @RequestBody NetworkRequest networkRequest) {
         NetworkStatusResponse networkStatusResponse = new NetworkStatusResponse();
         try {
-            BlockCapsule currentBlock = chainBaseManager.getBlockByNum(chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum());
+            long nowBlock = chainBaseManager.getDynamicPropertiesStore().getLatestSolidifiedBlockNum();
+            long headerBlock = chainBaseManager.getDynamicPropertiesStore().getLatestBlockHeaderNumber();
+            //fix single node database transaction error, single node block consensus maybe too fast, the block hasn't been processed
+            if (nowBlock == headerBlock) {
+                nowBlock = nowBlock - 1;
+            }
+            BlockCapsule currentBlock = chainBaseManager.getBlockByNum(nowBlock);
             networkStatusResponse.setCurrentBlockIdentifier(
                 new BlockIdentifier()
                     .index(currentBlock.getNum())
                     .hash(ByteArray.toHexString(currentBlock.getBlockId().getBytes())));
             networkStatusResponse.setCurrentBlockTimestamp(currentBlock.getTimeStamp());
         } catch (ItemNotFoundException | BadItemException e) {
-            ApiUtil.setExampleResponse(request, "application/json", JSON.toJSONString(Constant.newError(Constant.INVALID_REQUEST_FORMAT)));
+            ApiUtil.setExampleResponse(request, "application/json", JSON.toJSONString(Constant.newError(Constant.INVALID_REQUEST_FORMAT)
+                .details(JSON.parseObject("{\"error_msg\":\"" + e.getMessage() + "\"}"))));
+            logger.info("/network/status fail ! case : " + e);
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
