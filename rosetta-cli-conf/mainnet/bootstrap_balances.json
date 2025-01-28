@@ -8,5 +8,35 @@
       "decimals":6
     },
     "value": "99000000000000000"
+  },
+  {
+    "account_identifier": {
+      "address":"TQ1J1J1J1J1J1J1J1J1J1J1J1J1J1J1J1"
+    },
+    "currency":{
+      "symbol":"TRX",
+      "decimals":6
+    },
+    "value": "50000000000000000"
+  },
+  {
+    "account_identifier": {
+      "address":"TQ2J2J2J2J2J2J2J2J2J2J2J2J2J2J2J2"
+    },
+    "currency":{
+      "symbol":"TRX",
+      "decimals":6
+    },
+    "value": "30000000000000000"
+  },
+  {
+    "account_identifier": {
+      "address":"TQ3J3J3J3J3J3J3J3J3J3J3J3J3J3J3J3"
+    },
+    "currency":{
+      "symbol":"TRX",
+      "decimals":6
+    },
+    "value": "20000000000000000"
   }
 ]
