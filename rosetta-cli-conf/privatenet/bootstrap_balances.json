@@ -18,5 +18,25 @@
       "decimals":6
     },
     "value": "25000000000000000"
+  },
+  {
+    "account_identifier": {
+      "address":"TQ7J7J7J7J7J7J7J7J7J7J7J7J7J7J7J7"
+    },
+    "currency":{
+      "symbol":"TRX",
+      "decimals":6
+    },
+    "value": "15000000000000000"
+  },
+  {
+    "account_identifier": {
+      "address":"TQ8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8"
+    },
+    "currency":{
+      "symbol":"TRX",
+      "decimals":6
+    },
+    "value": "5000000000000000"
   }
 ]

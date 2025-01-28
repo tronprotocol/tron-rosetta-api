@@ -7,5 +7,32 @@
       "symbol": "TRX",
       "decimals": 6
     }
+  },
+  {
+    "account_identifier": {
+      "address":"TQ4J4J4J4J4J4J4J4J4J4J4J4J4J4J4J4"
+    },
+    "currency": {
+      "symbol": "TRX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address":"TQ5J5J5J5J5J5J5J5J5J5J5J5J5J5J5J5"
+    },
+    "currency": {
+      "symbol": "TRX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address":"TQ6J6J6J6J6J6J6J6J6J6J6J6J6J6J6J6"
+    },
+    "currency": {
+      "symbol": "TRX",
+      "decimals": 6
+    }
   }
 ]
