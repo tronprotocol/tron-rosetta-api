@@ -157,6 +157,53 @@ $ docker run --name tron-rosetta-api -d --env JVM_OPTIONS="-Xms8G -Xmx12G -XX:Ne
                                                          -XX:+CMSScavengeBeforeRemark" -p 8080:8080 -p 50051:50051 -v `pwd`/data:/data -v `pwd`/logs:/logs tron-rosetta-api:latest
 ```
 
+## Running the Tron Rosetta API locally
+
+To run the Tron Rosetta API locally, follow these steps:
+
+1. Clone the repository:
+```
+$ git clone https://github.com/tronprotocol/tron-rosetta-api.git
+$ cd tron-rosetta-api
+```
+
+2. Build the project using Gradle:
+```
+$ ./gradlew build
+```
+
+3. Run the application:
+```
+$ ./gradlew bootRun
+```
+
+The Tron Rosetta API will be available at `http://localhost:8080`.
+
+## Customizing the source code
+
+To customize the Tron Rosetta API source code, follow these steps:
+
+1. Clone the repository:
+```
+$ git clone https://github.com/tronprotocol/tron-rosetta-api.git
+$ cd tron-rosetta-api
+```
+
+2. Open the project in your preferred IDE (e.g., IntelliJ IDEA, Eclipse).
+
+3. Make your changes to the source code in the `src/main/java/org/tron/api` directory.
+
+4. Build the project using Gradle:
+```
+$ ./gradlew build
+```
+
+5. Run the application:
+```
+$ ./gradlew bootRun
+```
+
+Your customized Tron Rosetta API will be available at `http://localhost:8080`.
 
 ## API Reference
 
